@@ -1,0 +1,5402 @@
+{
+  "components": {
+    "schemas": {
+      "ASRLanguageEnum": {
+        "enum": [
+          "auto",
+          "Chinese",
+          "English",
+          "Cantonese",
+          "Arabic",
+          "German",
+          "French",
+          "Spanish",
+          "Portuguese",
+          "Indonesian",
+          "Italian",
+          "Korean",
+          "Russian",
+          "Thai",
+          "Vietnamese",
+          "Japanese",
+          "Turkish",
+          "Hindi",
+          "Malay",
+          "Dutch",
+          "Swedish",
+          "Danish",
+          "Finnish",
+          "Polish",
+          "Czech",
+          "Filipino",
+          "Persian",
+          "Greek",
+          "Hungarian",
+          "Macedonian",
+          "Romanian"
+        ],
+        "title": "ASRLanguageEnum",
+        "type": "string"
+      },
+      "ASRRequest": {
+        "properties": {
+          "audio_url": {
+            "title": "Audio Url",
+            "type": "string"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "denoise": {
+            "default": true,
+            "description": "Run MelBandRoFormer vocal separation before ASR",
+            "title": "Denoise",
+            "type": "boolean"
+          },
+          "hints": {
+            "default": "",
+            "description": "Optional context hints for rare terms / proper nouns",
+            "title": "Hints",
+            "type": "string"
+          },
+          "language": {
+            "$ref": "#/components/schemas/ASRLanguageEnum",
+            "default": "auto"
+          }
+        },
+        "required": [
+          "audio_url"
+        ],
+        "title": "ASRRequest",
+        "type": "object"
+      },
+      "Aleph2AspectRatioEnum": {
+        "enum": [
+          "16:9",
+          "4:3",
+          "3:2",
+          "1:1",
+          "2:3",
+          "3:4",
+          "9:16",
+          "21:9"
+        ],
+        "title": "Aleph2AspectRatioEnum",
+        "type": "string"
+      },
+      "Aleph2Keyframe": {
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "image_url": {
+            "title": "Image Url",
+            "type": "string"
+          },
+          "range": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Aleph2KeyframeRange"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "seconds": {
+            "anyOf": [
+              {
+                "maximum": 30.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seconds"
+          }
+        },
+        "required": [
+          "image_url"
+        ],
+        "title": "Aleph2Keyframe",
+        "type": "object"
+      },
+      "Aleph2KeyframeRange": {
+        "properties": {
+          "end_seconds": {
+            "exclusiveMinimum": 0.0,
+            "title": "End Seconds",
+            "type": "integer"
+          },
+          "start_seconds": {
+            "minimum": 0.0,
+            "title": "Start Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "start_seconds",
+          "end_seconds"
+        ],
+        "title": "Aleph2KeyframeRange",
+        "type": "object"
+      },
+      "Aleph2VideoEditRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "keyframes": {
+            "items": {
+              "$ref": "#/components/schemas/Aleph2Keyframe"
+            },
+            "maxItems": 5,
+            "title": "Keyframes",
+            "type": "array"
+          },
+          "model": {
+            "const": "aleph2",
+            "default": "aleph2",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt"
+          },
+          "public_figure_threshold": {
+            "anyOf": [
+              {
+                "enum": [
+                  "auto",
+                  "low"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Public Figure Threshold"
+          },
+          "seed": {
+            "default": -1,
+            "maximum": 4294967295.0,
+            "minimum": -1.0,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "target_aspect_ratio": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Aleph2AspectRatioEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "video_url": {
+            "title": "Video Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "video_url"
+        ],
+        "title": "Aleph2VideoEditRequest",
+        "type": "object"
+      },
+      "AuthCheckResponse": {
+        "properties": {
+          "status": {
+            "const": "ok",
+            "default": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "title": "AuthCheckResponse",
+        "type": "object"
+      },
+      "AzimuthEnum": {
+        "enum": [
+          "front",
+          "front_right",
+          "right",
+          "back_right",
+          "back",
+          "back_left",
+          "left",
+          "front_left"
+        ],
+        "title": "AzimuthEnum",
+        "type": "string"
+      },
+      "Body_captioning_v1_image_captioning_post": {
+        "properties": {
+          "data": {
+            "contentMediaType": "application/octet-stream",
+            "title": "Data",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Body_captioning_v1_image_captioning_post",
+        "type": "object"
+      },
+      "Body_faces_v1_faces_post": {
+        "properties": {
+          "data": {
+            "contentMediaType": "application/octet-stream",
+            "title": "Data",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Body_faces_v1_faces_post",
+        "type": "object"
+      },
+      "Body_keywords_v1_keywords_post": {
+        "properties": {
+          "data": {
+            "contentMediaType": "application/octet-stream",
+            "title": "Data",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Body_keywords_v1_keywords_post",
+        "type": "object"
+      },
+      "Body_post_imageswap_v1_imageswap_create_post": {
+        "properties": {
+          "callback": {
+            "format": "uri",
+            "maxLength": 2083,
+            "minLength": 1,
+            "title": "Callback",
+            "type": "string"
+          },
+          "source": {
+            "contentMediaType": "application/octet-stream",
+            "title": "Source",
+            "type": "string"
+          },
+          "target": {
+            "contentMediaType": "application/octet-stream",
+            "title": "Target",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "use_gfpgan": {
+            "default": false,
+            "title": "Use Gfpgan",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "source",
+          "target"
+        ],
+        "title": "Body_post_imageswap_v1_imageswap_create_post",
+        "type": "object"
+      },
+      "Body_post_videoswap_v1_videoswap_create_post": {
+        "properties": {
+          "callback": {
+            "format": "uri",
+            "maxLength": 2083,
+            "minLength": 1,
+            "title": "Callback",
+            "type": "string"
+          },
+          "source": {
+            "contentMediaType": "application/octet-stream",
+            "title": "Source",
+            "type": "string"
+          },
+          "target": {
+            "contentMediaType": "application/octet-stream",
+            "title": "Target",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "use_gfpgan": {
+            "default": false,
+            "title": "Use Gfpgan",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "source",
+          "target"
+        ],
+        "title": "Body_post_videoswap_v1_videoswap_create_post",
+        "type": "object"
+      },
+      "Body_quality_ugc_v1_quality_ugc_post": {
+        "properties": {
+          "data": {
+            "contentMediaType": "application/octet-stream",
+            "title": "Data",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Body_quality_ugc_v1_quality_ugc_post",
+        "type": "object"
+      },
+      "Body_quality_v1_quality_post": {
+        "properties": {
+          "data": {
+            "contentMediaType": "application/octet-stream",
+            "title": "Data",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Body_quality_v1_quality_post",
+        "type": "object"
+      },
+      "Body_video_keywords_v1_video_keywords_post": {
+        "properties": {
+          "data": {
+            "contentMediaType": "application/octet-stream",
+            "title": "Data",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "Body_video_keywords_v1_video_keywords_post",
+        "type": "object"
+      },
+      "CaptioningFullResponse": {
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/CaptioningResponse"
+          },
+          "status": {
+            "title": "Status",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "result",
+          "status"
+        ],
+        "title": "CaptioningFullResponse",
+        "type": "object"
+      },
+      "CaptioningResponse": {
+        "properties": {
+          "caption": {
+            "title": "Caption",
+            "type": "string"
+          }
+        },
+        "required": [
+          "caption"
+        ],
+        "title": "CaptioningResponse",
+        "type": "object"
+      },
+      "DistanceEnum": {
+        "enum": [
+          "close_up",
+          "medium",
+          "wide"
+        ],
+        "title": "DistanceEnum",
+        "type": "string"
+      },
+      "ElevationEnum": {
+        "enum": [
+          "low",
+          "eye_level",
+          "elevated",
+          "high"
+        ],
+        "title": "ElevationEnum",
+        "type": "string"
+      },
+      "FacesResponse": {
+        "properties": {
+          "faces": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Faces",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "faces",
+          "status"
+        ],
+        "title": "FacesResponse",
+        "type": "object"
+      },
+      "Grok15VideoGenRequest": {
+        "properties": {
+          "aspect_ratio": {
+            "$ref": "#/components/schemas/VideoAspectRatioEnum",
+            "default": "16:9"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "duration": {
+            "description": "Video duration in seconds (1-15)",
+            "maximum": 15.0,
+            "minimum": 1.0,
+            "title": "Duration",
+            "type": "integer"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "model": {
+            "const": "grok15",
+            "default": "grok15",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/GrokVideoResolutionEnum",
+            "default": "480p"
+          }
+        },
+        "required": [
+          "prompt",
+          "duration"
+        ],
+        "title": "Grok15VideoGenRequest",
+        "type": "object"
+      },
+      "GrokVideoGenRequest": {
+        "properties": {
+          "aspect_ratio": {
+            "$ref": "#/components/schemas/VideoAspectRatioEnum",
+            "default": "16:9"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "duration": {
+            "description": "Video duration in seconds (1-15)",
+            "maximum": 15.0,
+            "minimum": 1.0,
+            "title": "Duration",
+            "type": "integer"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "model": {
+            "const": "grok",
+            "default": "grok",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/GrokVideoResolutionEnum",
+            "default": "480p"
+          }
+        },
+        "required": [
+          "prompt",
+          "duration"
+        ],
+        "title": "GrokVideoGenRequest",
+        "type": "object"
+      },
+      "GrokVideoResolutionEnum": {
+        "enum": [
+          "480p",
+          "720p"
+        ],
+        "title": "GrokVideoResolutionEnum",
+        "type": "string"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthReport": {
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "HealthReport",
+        "type": "object"
+      },
+      "ImageEditAnglesRequest": {
+        "properties": {
+          "azimuth": {
+            "$ref": "#/components/schemas/AzimuthEnum",
+            "default": "front"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "distance": {
+            "$ref": "#/components/schemas/DistanceEnum",
+            "default": "medium"
+          },
+          "elevation": {
+            "$ref": "#/components/schemas/ElevationEnum",
+            "default": "eye_level"
+          },
+          "image_size": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImageSizeEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "image_url": {
+            "title": "Image Url",
+            "type": "string"
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "image_url"
+        ],
+        "title": "ImageEditAnglesRequest",
+        "type": "object"
+      },
+      "ImageEditColorsRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_reference_url": {
+            "title": "Image Reference Url",
+            "type": "string"
+          },
+          "image_size": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImageSizeEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "image_url": {
+            "title": "Image Url",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "image_url",
+          "image_reference_url"
+        ],
+        "title": "ImageEditColorsRequest",
+        "type": "object"
+      },
+      "ImageEditModelEnum": {
+        "enum": [
+          "flux2",
+          "qwen",
+          "wan2.7",
+          "wan2.7-pro",
+          "grok",
+          "grok_quality",
+          "gemini-3.1-flash",
+          "gemini-3-pro",
+          "seedream-5-pro",
+          "seedream-5",
+          "gpt-image-2-low",
+          "gpt-image-2-medium",
+          "gpt-image-2-high"
+        ],
+        "title": "ImageEditModelEnum",
+        "type": "string"
+      },
+      "ImageEditRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImageSizeEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Image Urls",
+            "type": "array"
+          },
+          "megapixel_ratio": {
+            "default": 1.0,
+            "description": "Multiplier for the target megapixel count of the image_edit result",
+            "maximum": 1.5,
+            "minimum": 0.5,
+            "title": "Megapixel Ratio",
+            "type": "number"
+          },
+          "model": {
+            "$ref": "#/components/schemas/ImageEditModelEnum",
+            "default": "flux2"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/ImageGenerateResolutionEnum",
+            "default": "1k"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt",
+          "image_urls"
+        ],
+        "title": "ImageEditRequest",
+        "type": "object"
+      },
+      "ImageGenerateModelEnum": {
+        "enum": [
+          "zimage",
+          "wan22",
+          "wan2.7",
+          "wan2.7-pro",
+          "flux2",
+          "grok",
+          "grok_quality",
+          "gemini-3.1-flash",
+          "gemini-3-pro",
+          "seedream-5-pro",
+          "seedream-5",
+          "gpt-image-2-low",
+          "gpt-image-2-medium",
+          "gpt-image-2-high"
+        ],
+        "title": "ImageGenerateModelEnum",
+        "type": "string"
+      },
+      "ImageGenerateResolutionEnum": {
+        "enum": [
+          "1k",
+          "2k",
+          "3k",
+          "4k"
+        ],
+        "title": "ImageGenerateResolutionEnum",
+        "type": "string"
+      },
+      "ImageLipsyncRequest": {
+        "properties": {
+          "audio_url": {
+            "title": "Audio Url",
+            "type": "string"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_url": {
+            "title": "Image Url",
+            "type": "string"
+          },
+          "model": {
+            "$ref": "#/components/schemas/LipsyncModelEnum",
+            "default": "inftalk"
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/VideoResolutionEnum",
+            "default": "480p"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "image_url",
+          "audio_url"
+        ],
+        "title": "ImageLipsyncRequest",
+        "type": "object"
+      },
+      "ImageRemoveBackgroundRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_url": {
+            "title": "Image Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "image_url"
+        ],
+        "title": "ImageRemoveBackgroundRequest",
+        "type": "object"
+      },
+      "ImageSizeEnum": {
+        "enum": [
+          "square",
+          "portrait_3_2",
+          "portrait_4_3",
+          "portrait_16_9",
+          "landscape_3_2",
+          "landscape_4_3",
+          "landscape_16_9"
+        ],
+        "title": "ImageSizeEnum",
+        "type": "string"
+      },
+      "ImageStyleEnum": {
+        "enum": [
+          "basic",
+          "instagram",
+          "portrait",
+          "transparent",
+          "replication"
+        ],
+        "title": "ImageStyleEnum",
+        "type": "string"
+      },
+      "ImageSwapStatusResponse": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "eta": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eta"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress"
+          },
+          "queue": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "task_id"
+        ],
+        "title": "ImageSwapStatusResponse",
+        "type": "object"
+      },
+      "ImageUpscaleModelEnum": {
+        "enum": [
+          "flux2",
+          "seedvr2"
+        ],
+        "title": "ImageUpscaleModelEnum",
+        "type": "string"
+      },
+      "ImgenRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "$ref": "#/components/schemas/ImageSizeEnum",
+            "default": "square"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "ip_scale": {
+            "default": 0.75,
+            "title": "Ip Scale",
+            "type": "number"
+          },
+          "lora_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lora Url"
+          },
+          "model": {
+            "$ref": "#/components/schemas/ImageGenerateModelEnum",
+            "default": "zimage"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/ImageGenerateResolutionEnum",
+            "default": "1k"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImageStyleEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "ImgenRequest",
+        "type": "object"
+      },
+      "ImgenStatusResponse": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "queue": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "task_id"
+        ],
+        "title": "ImgenStatusResponse",
+        "type": "object"
+      },
+      "ImgenUpscaleRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_from_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image From Task Id"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "model": {
+            "$ref": "#/components/schemas/ImageUpscaleModelEnum",
+            "default": "seedvr2"
+          }
+        },
+        "title": "ImgenUpscaleRequest",
+        "type": "object"
+      },
+      "KeywordsResponse": {
+        "properties": {
+          "colors": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Colors"
+          },
+          "keywords": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Keywords",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "keywords",
+          "status"
+        ],
+        "title": "KeywordsResponse",
+        "type": "object"
+      },
+      "KlingContentImage": {
+        "properties": {
+          "image_url": {
+            "$ref": "#/components/schemas/ProviderContentImageUrl"
+          },
+          "type": {
+            "const": "image_url",
+            "default": "image_url",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "image_url"
+        ],
+        "title": "KlingContentImage",
+        "type": "object"
+      },
+      "KlingContentText": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "text",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "title": "KlingContentText",
+        "type": "object"
+      },
+      "KlingContentVideo": {
+        "properties": {
+          "type": {
+            "const": "video_url",
+            "default": "video_url",
+            "title": "Type",
+            "type": "string"
+          },
+          "video_url": {
+            "$ref": "#/components/schemas/ProviderContentVideoUrl"
+          }
+        },
+        "required": [
+          "video_url"
+        ],
+        "title": "KlingContentVideo",
+        "type": "object"
+      },
+      "KlingV26VideoGenRequest": {
+        "properties": {
+          "aspect_ratio": {
+            "$ref": "#/components/schemas/VideoAspectRatioEnum",
+            "default": "16:9"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "duration": {
+            "default": 5,
+            "description": "Video duration in seconds (5 or 10)",
+            "enum": [
+              5,
+              10
+            ],
+            "title": "Duration",
+            "type": "integer"
+          },
+          "generate_audio": {
+            "default": true,
+            "title": "Generate Audio",
+            "type": "boolean"
+          },
+          "model": {
+            "const": "kling-2.6",
+            "default": "kling-2.6",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/KlingVideoResolutionEnum",
+            "default": "1080p"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "KlingV26VideoGenRequest",
+        "type": "object"
+      },
+      "KlingV3OmniVideoEditRequest": {
+        "properties": {
+          "aspect_ratio": {
+            "$ref": "#/components/schemas/VideoAspectRatioEnum",
+            "default": "16:9"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "content": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "image_url": "#/components/schemas/KlingContentImage",
+                  "text": "#/components/schemas/KlingContentText",
+                  "video_url": "#/components/schemas/KlingContentVideo"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/KlingContentText"
+                },
+                {
+                  "$ref": "#/components/schemas/KlingContentImage"
+                },
+                {
+                  "$ref": "#/components/schemas/KlingContentVideo"
+                }
+              ]
+            },
+            "minItems": 1,
+            "title": "Content",
+            "type": "array"
+          },
+          "duration": {
+            "default": 5,
+            "description": "Video duration in seconds (3-10)",
+            "maximum": 10.0,
+            "minimum": 3.0,
+            "title": "Duration",
+            "type": "integer"
+          },
+          "generate_audio": {
+            "const": false,
+            "default": false,
+            "title": "Generate Audio",
+            "type": "boolean"
+          },
+          "model": {
+            "const": "kling-3-omni",
+            "default": "kling-3-omni",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/KlingV3VideoResolutionEnum",
+            "default": "1080p"
+          }
+        },
+        "required": [
+          "prompt",
+          "content"
+        ],
+        "title": "KlingV3OmniVideoEditRequest",
+        "type": "object"
+      },
+      "KlingV3OmniVideoGenRequest": {
+        "properties": {
+          "aspect_ratio": {
+            "$ref": "#/components/schemas/VideoAspectRatioEnum",
+            "default": "16:9"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "duration": {
+            "default": 5,
+            "description": "Video duration in seconds (3-15)",
+            "maximum": 15.0,
+            "minimum": 3.0,
+            "title": "Duration",
+            "type": "integer"
+          },
+          "generate_audio": {
+            "default": true,
+            "title": "Generate Audio",
+            "type": "boolean"
+          },
+          "model": {
+            "const": "kling-3-omni",
+            "default": "kling-3-omni",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/KlingV3VideoResolutionEnum",
+            "default": "1080p"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "KlingV3OmniVideoGenRequest",
+        "type": "object"
+      },
+      "KlingV3TurboVideoGenRequest": {
+        "properties": {
+          "aspect_ratio": {
+            "$ref": "#/components/schemas/VideoAspectRatioEnum",
+            "default": "16:9"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "duration": {
+            "default": 5,
+            "description": "Video duration in seconds (3-15)",
+            "maximum": 15.0,
+            "minimum": 3.0,
+            "title": "Duration",
+            "type": "integer"
+          },
+          "generate_audio": {
+            "const": false,
+            "default": false,
+            "title": "Generate Audio",
+            "type": "boolean"
+          },
+          "model": {
+            "const": "kling-3-turbo",
+            "default": "kling-3-turbo",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/KlingVideoResolutionEnum",
+            "default": "720p"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "KlingV3TurboVideoGenRequest",
+        "type": "object"
+      },
+      "KlingV3VideoGenRequest": {
+        "properties": {
+          "aspect_ratio": {
+            "$ref": "#/components/schemas/VideoAspectRatioEnum",
+            "default": "16:9"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "duration": {
+            "default": 5,
+            "description": "Video duration in seconds (3-15)",
+            "maximum": 15.0,
+            "minimum": 3.0,
+            "title": "Duration",
+            "type": "integer"
+          },
+          "generate_audio": {
+            "default": true,
+            "title": "Generate Audio",
+            "type": "boolean"
+          },
+          "model": {
+            "const": "kling-3",
+            "default": "kling-3",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/KlingV3VideoResolutionEnum",
+            "default": "1080p"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "KlingV3VideoGenRequest",
+        "type": "object"
+      },
+      "KlingV3VideoResolutionEnum": {
+        "enum": [
+          "720p",
+          "1080p",
+          "4k"
+        ],
+        "title": "KlingV3VideoResolutionEnum",
+        "type": "string"
+      },
+      "KlingVideoResolutionEnum": {
+        "enum": [
+          "720p",
+          "1080p"
+        ],
+        "title": "KlingVideoResolutionEnum",
+        "type": "string"
+      },
+      "LTX23VideoGenRequest": {
+        "properties": {
+          "aspect_ratio": {
+            "$ref": "#/components/schemas/VideoAspectRatioEnum",
+            "default": "16:9"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "duration": {
+            "description": "Video duration in seconds (1-10)",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Duration",
+            "type": "integer"
+          },
+          "image_last_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Last Url"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "model": {
+            "const": "ltx23",
+            "default": "ltx23",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/VideoResolutionEnum",
+            "default": "720p"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt",
+          "duration"
+        ],
+        "title": "LTX23VideoGenRequest",
+        "type": "object"
+      },
+      "LipsyncModelEnum": {
+        "enum": [
+          "inftalk",
+          "ltx23"
+        ],
+        "title": "LipsyncModelEnum",
+        "type": "string"
+      },
+      "LipsyncRequest": {
+        "properties": {
+          "audio_url": {
+            "title": "Audio Url",
+            "type": "string"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/VideoResolutionEnum",
+            "default": "480p"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "video_url": {
+            "title": "Video Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "video_url",
+          "audio_url"
+        ],
+        "title": "LipsyncRequest",
+        "type": "object"
+      },
+      "ProviderContentAudioUrl": {
+        "properties": {
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "ProviderContentAudioUrl",
+        "type": "object"
+      },
+      "ProviderContentImageUrl": {
+        "properties": {
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "ProviderContentImageUrl",
+        "type": "object"
+      },
+      "ProviderContentVideoUrl": {
+        "properties": {
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "ProviderContentVideoUrl",
+        "type": "object"
+      },
+      "QualityResponse": {
+        "properties": {
+          "quality": {
+            "additionalProperties": true,
+            "title": "Quality",
+            "type": "object"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "quality",
+          "status"
+        ],
+        "title": "QualityResponse",
+        "type": "object"
+      },
+      "QualityUGCResponse": {
+        "properties": {
+          "quality": {
+            "additionalProperties": true,
+            "title": "Quality",
+            "type": "object"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "quality",
+          "status"
+        ],
+        "title": "QualityUGCResponse",
+        "type": "object"
+      },
+      "Seedance2ContentAudio": {
+        "properties": {
+          "audio_url": {
+            "$ref": "#/components/schemas/ProviderContentAudioUrl"
+          },
+          "role": {
+            "const": "reference_audio",
+            "default": "reference_audio",
+            "title": "Role",
+            "type": "string"
+          },
+          "type": {
+            "const": "audio_url",
+            "default": "audio_url",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "audio_url"
+        ],
+        "title": "Seedance2ContentAudio",
+        "type": "object"
+      },
+      "Seedance2ContentImage": {
+        "properties": {
+          "image_url": {
+            "$ref": "#/components/schemas/ProviderContentImageUrl"
+          },
+          "role": {
+            "const": "reference_image",
+            "default": "reference_image",
+            "title": "Role",
+            "type": "string"
+          },
+          "type": {
+            "const": "image_url",
+            "default": "image_url",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "image_url"
+        ],
+        "title": "Seedance2ContentImage",
+        "type": "object"
+      },
+      "Seedance2ContentText": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "text",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "title": "Seedance2ContentText",
+        "type": "object"
+      },
+      "Seedance2ContentVideo": {
+        "properties": {
+          "role": {
+            "const": "reference_video",
+            "default": "reference_video",
+            "title": "Role",
+            "type": "string"
+          },
+          "type": {
+            "const": "video_url",
+            "default": "video_url",
+            "title": "Type",
+            "type": "string"
+          },
+          "video_url": {
+            "$ref": "#/components/schemas/ProviderContentVideoUrl"
+          }
+        },
+        "required": [
+          "video_url"
+        ],
+        "title": "Seedance2ContentVideo",
+        "type": "object"
+      },
+      "Seedance2VideoAspectRatioEnum": {
+        "enum": [
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16",
+          "21:9"
+        ],
+        "title": "Seedance2VideoAspectRatioEnum",
+        "type": "string"
+      },
+      "Seedance2VideoEditRequest": {
+        "properties": {
+          "aspect_ratio": {
+            "$ref": "#/components/schemas/Seedance2VideoAspectRatioEnum",
+            "default": "16:9"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "content": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "audio_url": "#/components/schemas/Seedance2ContentAudio",
+                  "image_url": "#/components/schemas/Seedance2ContentImage",
+                  "text": "#/components/schemas/Seedance2ContentText",
+                  "video_url": "#/components/schemas/Seedance2ContentVideo"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/Seedance2ContentText"
+                },
+                {
+                  "$ref": "#/components/schemas/Seedance2ContentImage"
+                },
+                {
+                  "$ref": "#/components/schemas/Seedance2ContentVideo"
+                },
+                {
+                  "$ref": "#/components/schemas/Seedance2ContentAudio"
+                }
+              ]
+            },
+            "minItems": 1,
+            "title": "Content",
+            "type": "array"
+          },
+          "duration": {
+            "default": 5,
+            "description": "Video duration in seconds (4-15)",
+            "maximum": 15.0,
+            "minimum": 4.0,
+            "title": "Duration",
+            "type": "integer"
+          },
+          "generate_audio": {
+            "default": true,
+            "title": "Generate Audio",
+            "type": "boolean"
+          },
+          "model": {
+            "default": "seedance2",
+            "enum": [
+              "seedance2",
+              "seedance2-mini"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/Seedance2VideoResolutionEnum",
+            "default": "720p"
+          }
+        },
+        "required": [
+          "prompt",
+          "content"
+        ],
+        "title": "Seedance2VideoEditRequest",
+        "type": "object"
+      },
+      "Seedance2VideoGenRequest": {
+        "properties": {
+          "aspect_ratio": {
+            "$ref": "#/components/schemas/Seedance2VideoAspectRatioEnum",
+            "default": "16:9"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "duration": {
+            "default": 5,
+            "description": "Video duration in seconds (4-15)",
+            "maximum": 15.0,
+            "minimum": 4.0,
+            "title": "Duration",
+            "type": "integer"
+          },
+          "generate_audio": {
+            "default": true,
+            "title": "Generate Audio",
+            "type": "boolean"
+          },
+          "model": {
+            "default": "seedance2",
+            "enum": [
+              "seedance2",
+              "seedance2-mini"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/Seedance2VideoResolutionEnum",
+            "default": "720p"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "Seedance2VideoGenRequest",
+        "type": "object"
+      },
+      "Seedance2VideoResolutionEnum": {
+        "enum": [
+          "480p",
+          "720p",
+          "1080p",
+          "4k"
+        ],
+        "title": "Seedance2VideoResolutionEnum",
+        "type": "string"
+      },
+      "StatusResponse": {
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "StatusResponse",
+        "type": "object"
+      },
+      "TTSCharacterEnum": {
+        "enum": [
+          "Auto",
+          "Female",
+          "Male",
+          "Young Female",
+          "Young Male",
+          "Girl",
+          "Boy",
+          "Child",
+          "Teen",
+          "Adult",
+          "Senior Female",
+          "Senior Male",
+          "Narrator",
+          "Announcer"
+        ],
+        "title": "TTSCharacterEnum",
+        "type": "string"
+      },
+      "TTSCloneRequest": {
+        "properties": {
+          "audio_url": {
+            "title": "Audio Url",
+            "type": "string"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "language": {
+            "$ref": "#/components/schemas/TTSLanguageEnum",
+            "default": "Auto"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "audio_url",
+          "text"
+        ],
+        "title": "TTSCloneRequest",
+        "type": "object"
+      },
+      "TTSCreateRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "language": {
+            "$ref": "#/components/schemas/TTSLanguageEnum",
+            "default": "Auto"
+          },
+          "prompt": {
+            "default": "",
+            "title": "Prompt",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "speaker": {
+            "$ref": "#/components/schemas/TTSSpeakerEnum",
+            "default": "Ryan"
+          },
+          "style": {
+            "$ref": "#/components/schemas/TTSStyleEnum",
+            "default": "Auto"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "TTSCreateRequest",
+        "type": "object"
+      },
+      "TTSLanguageEnum": {
+        "enum": [
+          "Auto",
+          "Chinese",
+          "English",
+          "Japanese",
+          "Korean",
+          "French",
+          "German",
+          "Spanish",
+          "Portuguese",
+          "Russian",
+          "Italian"
+        ],
+        "title": "TTSLanguageEnum",
+        "type": "string"
+      },
+      "TTSSpeakerEnum": {
+        "enum": [
+          "Aiden",
+          "Dylan",
+          "Eric",
+          "Ono_Anna",
+          "Ryan",
+          "Serena",
+          "Sohee",
+          "Uncle_Fu",
+          "Vivian"
+        ],
+        "title": "TTSSpeakerEnum",
+        "type": "string"
+      },
+      "TTSStyleEnum": {
+        "enum": [
+          "Auto",
+          "Warm",
+          "Gentle",
+          "Calm",
+          "Cheerful",
+          "Friendly",
+          "Serious",
+          "Sad",
+          "Angry",
+          "Excited",
+          "Soft",
+          "Deep",
+          "Clear",
+          "Emotional",
+          "Dramatic",
+          "Whisper",
+          "Breathy",
+          "Husky",
+          "Authoritative",
+          "Storytelling",
+          "News Anchor",
+          "Documentary",
+          "Customer Support",
+          "Teacher",
+          "Audiobook",
+          "Energetic",
+          "Relaxed",
+          "Playful",
+          "Mysterious",
+          "Romantic",
+          "Inspirational",
+          "Formal",
+          "Casual",
+          "ASMR",
+          "Noir",
+          "Cinematic",
+          "Trailer",
+          "Motivational",
+          "Robotic",
+          "Vintage Radio",
+          "Lullaby",
+          "Comedy",
+          "Interview",
+          "Poetic",
+          "Philosophical",
+          "Sportscaster",
+          "Meditation"
+        ],
+        "title": "TTSStyleEnum",
+        "type": "string"
+      },
+      "TTSVoiceRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "character": {
+            "$ref": "#/components/schemas/TTSCharacterEnum",
+            "default": "Female"
+          },
+          "language": {
+            "$ref": "#/components/schemas/TTSLanguageEnum",
+            "default": "Auto"
+          },
+          "prompt": {
+            "default": "",
+            "title": "Prompt",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "style": {
+            "$ref": "#/components/schemas/TTSStyleEnum",
+            "default": "Auto"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "TTSVoiceRequest",
+        "type": "object"
+      },
+      "TaskResponse": {
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "task_id"
+        ],
+        "title": "TaskResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "VeoVideoAspectRatioEnum": {
+        "enum": [
+          "16:9",
+          "9:16"
+        ],
+        "title": "VeoVideoAspectRatioEnum",
+        "type": "string"
+      },
+      "VeoVideoGenRequest": {
+        "properties": {
+          "aspect_ratio": {
+            "$ref": "#/components/schemas/VeoVideoAspectRatioEnum",
+            "default": "16:9"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "duration": {
+            "default": 8,
+            "description": "Video duration in seconds (4, 6, or 8)",
+            "enum": [
+              4,
+              6,
+              8
+            ],
+            "title": "Duration",
+            "type": "integer"
+          },
+          "image_last_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Last Url"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "model": {
+            "enum": [
+              "veo-3.1",
+              "veo-3.1-fast"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "reference_image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Reference Image Urls",
+            "type": "array"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/VeoVideoResolutionEnum",
+            "default": "720p"
+          }
+        },
+        "required": [
+          "prompt",
+          "model"
+        ],
+        "title": "VeoVideoGenRequest",
+        "type": "object"
+      },
+      "VeoVideoResolutionEnum": {
+        "enum": [
+          "720p",
+          "1080p",
+          "4k"
+        ],
+        "title": "VeoVideoResolutionEnum",
+        "type": "string"
+      },
+      "VideoAspectRatioEnum": {
+        "enum": [
+          "16:9",
+          "9:16",
+          "1:1"
+        ],
+        "title": "VideoAspectRatioEnum",
+        "type": "string"
+      },
+      "VideoMattingRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "prompt": {
+            "default": "person",
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "video_url": {
+            "title": "Video Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "video_url"
+        ],
+        "title": "VideoMattingRequest",
+        "type": "object"
+      },
+      "VideoResolutionEnum": {
+        "enum": [
+          "360p",
+          "480p",
+          "720p"
+        ],
+        "title": "VideoResolutionEnum",
+        "type": "string"
+      },
+      "VideoSoundtrackRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "prompt": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "video_url": {
+            "title": "Video Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "video_url"
+        ],
+        "title": "VideoSoundtrackRequest",
+        "type": "object"
+      },
+      "VideoSwapStatusResponse": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "eta": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eta"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress"
+          },
+          "queue": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "task_id"
+        ],
+        "title": "VideoSwapStatusResponse",
+        "type": "object"
+      },
+      "VideoUpscaleRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "model": {
+            "const": "seedvr2",
+            "default": "seedvr2",
+            "title": "Model",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/VideoUpscaleResolutionEnum",
+            "default": "1080p"
+          },
+          "video_from_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video From Task Id"
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url"
+          }
+        },
+        "title": "VideoUpscaleRequest",
+        "type": "object"
+      },
+      "VideoUpscaleResolutionEnum": {
+        "enum": [
+          "720p",
+          "1080p",
+          "1440p"
+        ],
+        "title": "VideoUpscaleResolutionEnum",
+        "type": "string"
+      },
+      "WAN22VideoGenRequest": {
+        "properties": {
+          "aspect_ratio": {
+            "$ref": "#/components/schemas/VideoAspectRatioEnum",
+            "default": "16:9"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "duration": {
+            "description": "Video duration in seconds (1-10)",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Duration",
+            "type": "integer"
+          },
+          "lora_high_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lora High Url"
+          },
+          "lora_low_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lora Low Url"
+          },
+          "model": {
+            "const": "wan22",
+            "default": "wan22",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/VideoResolutionEnum",
+            "default": "480p"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt",
+          "duration"
+        ],
+        "title": "WAN22VideoGenRequest",
+        "type": "object"
+      },
+      "Wan27VideoAspectRatioEnum": {
+        "enum": [
+          "16:9",
+          "9:16",
+          "1:1",
+          "4:3",
+          "3:4"
+        ],
+        "title": "Wan27VideoAspectRatioEnum",
+        "type": "string"
+      },
+      "Wan27VideoEditRequest": {
+        "properties": {
+          "aspect_ratio": {
+            "$ref": "#/components/schemas/Wan27VideoAspectRatioEnum",
+            "default": "16:9"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "duration": {
+            "default": 5,
+            "description": "Output duration in seconds (2-10)",
+            "maximum": 10.0,
+            "minimum": 2.0,
+            "title": "Duration",
+            "type": "integer"
+          },
+          "model": {
+            "const": "wan2.7",
+            "default": "wan2.7",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "reference_image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Reference Image Urls",
+            "type": "array"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/Wan27VideoResolutionEnum",
+            "default": "720p"
+          },
+          "seed": {
+            "default": -1,
+            "maximum": 2147483647.0,
+            "minimum": -1.0,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "video_url": {
+            "title": "Video Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prompt",
+          "video_url"
+        ],
+        "title": "Wan27VideoEditRequest",
+        "type": "object"
+      },
+      "Wan27VideoGenRequest": {
+        "properties": {
+          "aspect_ratio": {
+            "$ref": "#/components/schemas/Wan27VideoAspectRatioEnum",
+            "default": "16:9"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "duration": {
+            "default": 5,
+            "description": "Video duration in seconds (2-15)",
+            "maximum": 15.0,
+            "minimum": 2.0,
+            "title": "Duration",
+            "type": "integer"
+          },
+          "image_last_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Last Url"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "model": {
+            "const": "wan2.7",
+            "default": "wan2.7",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "reference_image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5,
+            "title": "Reference Image Urls",
+            "type": "array"
+          },
+          "reference_video_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Reference Video Urls",
+            "type": "array"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/Wan27VideoResolutionEnum",
+            "default": "720p"
+          },
+          "seed": {
+            "default": -1,
+            "maximum": 2147483647.0,
+            "minimum": -1.0,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "Wan27VideoGenRequest",
+        "type": "object"
+      },
+      "Wan27VideoResolutionEnum": {
+        "enum": [
+          "720p",
+          "1080p"
+        ],
+        "title": "Wan27VideoResolutionEnum",
+        "type": "string"
+      }
+    }
+  },
+  "info": {
+    "title": "FastAPI",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "description": "Проверяем доступность моделей в Triton и состояние фоновых воркеров.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/oauth/token": {
+      "post": {
+        "operationId": "issue_token_oauth_token_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "client_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Client Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "client_secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Client Secret"
+            }
+          },
+          {
+            "in": "query",
+            "name": "grant_type",
+            "required": false,
+            "schema": {
+              "default": "client_credentials",
+              "title": "Grant Type",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Issue Token",
+        "tags": [
+          "oauth"
+        ]
+      }
+    },
+    "/v1/auth/check": {
+      "get": {
+        "operationId": "check_auth_v1_auth_check_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthCheckResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Check Auth",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/faces": {
+      "get": {
+        "operationId": "faces_get_v1_faces_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "url",
+            "required": true,
+            "schema": {
+              "format": "uri",
+              "maxLength": 2083,
+              "minLength": 1,
+              "title": "Url",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FacesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Faces Get",
+        "tags": [
+          "faces"
+        ]
+      },
+      "post": {
+        "operationId": "faces_v1_faces_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_faces_v1_faces_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FacesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Faces",
+        "tags": [
+          "faces"
+        ]
+      }
+    },
+    "/v1/image_captioning": {
+      "get": {
+        "operationId": "captioning_get_v1_image_captioning_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "url",
+            "required": true,
+            "schema": {
+              "format": "uri",
+              "maxLength": 2083,
+              "minLength": 1,
+              "title": "Url",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "caption_len",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "short",
+                    "normal",
+                    "long"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "normal",
+              "title": "Caption Len"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptioningFullResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Captioning Get",
+        "tags": [
+          "image_captioning"
+        ]
+      },
+      "post": {
+        "operationId": "captioning_v1_image_captioning_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "caption_len",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "short",
+                    "normal",
+                    "long"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "normal",
+              "title": "Caption Len"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_captioning_v1_image_captioning_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptioningFullResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Captioning",
+        "tags": [
+          "image_captioning"
+        ]
+      }
+    },
+    "/v1/image_edit": {
+      "post": {
+        "operationId": "image_edit_v1_image_edit_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageEditRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Image Edit",
+        "tags": [
+          "imgen"
+        ]
+      }
+    },
+    "/v1/image_edit_angles": {
+      "post": {
+        "operationId": "edit_angles_v1_image_edit_angles_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageEditAnglesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit Angles",
+        "tags": [
+          "imgen"
+        ]
+      }
+    },
+    "/v1/image_edit_colors": {
+      "post": {
+        "operationId": "edit_colors_v1_image_edit_colors_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageEditColorsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit Colors",
+        "tags": [
+          "imgen"
+        ]
+      }
+    },
+    "/v1/image_generate": {
+      "post": {
+        "operationId": "generate_v1_image_generate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImgenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Generate",
+        "tags": [
+          "imgen"
+        ]
+      }
+    },
+    "/v1/image_lipsync": {
+      "post": {
+        "operationId": "image_lipsync_v1_image_lipsync_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageLipsyncRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Image Lipsync",
+        "tags": [
+          "lipsync"
+        ]
+      }
+    },
+    "/v1/image_remove_background": {
+      "post": {
+        "operationId": "image_remove_background_v1_image_remove_background_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageRemoveBackgroundRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Image Remove Background",
+        "tags": [
+          "imgen"
+        ]
+      }
+    },
+    "/v1/image_upscale": {
+      "post": {
+        "operationId": "upscale_v1_image_upscale_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImgenUpscaleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upscale",
+        "tags": [
+          "imgen"
+        ]
+      }
+    },
+    "/v1/imageswap/create": {
+      "get": {
+        "description": "GET endpoint для создания задачи imageswap по URL.\nЗагружает изображения по source_url и target_url, валидирует их и запускает задачу.",
+        "operationId": "get_imageswap_v1_imageswap_create_get",
+        "parameters": [
+          {
+            "description": "Source image URL",
+            "in": "query",
+            "name": "source_url",
+            "required": true,
+            "schema": {
+              "description": "Source image URL",
+              "format": "uri",
+              "maxLength": 2083,
+              "minLength": 1,
+              "title": "Source Url",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Target image URL",
+            "in": "query",
+            "name": "target_url",
+            "required": true,
+            "schema": {
+              "description": "Target image URL",
+              "format": "uri",
+              "maxLength": 2083,
+              "minLength": 1,
+              "title": "Target Url",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Callback URL",
+            "in": "query",
+            "name": "callback",
+            "required": false,
+            "schema": {
+              "description": "Callback URL",
+              "format": "uri",
+              "maxLength": 2083,
+              "minLength": 1,
+              "title": "Callback",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Result image filename",
+            "in": "query",
+            "name": "title",
+            "required": false,
+            "schema": {
+              "description": "Result image filename",
+              "title": "Title",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Use GFPGAN for image restoration",
+            "in": "query",
+            "name": "use_gfpgan",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Use GFPGAN for image restoration",
+              "title": "Use Gfpgan",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageSwapStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Imageswap",
+        "tags": [
+          "imageswap"
+        ]
+      },
+      "post": {
+        "operationId": "post_imageswap_v1_imageswap_create_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_post_imageswap_v1_imageswap_create_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageSwapStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Imageswap",
+        "tags": [
+          "imageswap"
+        ]
+      }
+    },
+    "/v1/imageswap/status": {
+      "get": {
+        "operationId": "get_status_v1_imageswap_status_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageSwapStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Status",
+        "tags": [
+          "imageswap"
+        ]
+      }
+    },
+    "/v1/imageswap/terminate": {
+      "post": {
+        "operationId": "post_terminate_v1_imageswap_terminate_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Terminate",
+        "tags": [
+          "imageswap"
+        ]
+      }
+    },
+    "/v1/keywords": {
+      "get": {
+        "operationId": "keywords_get_v1_keywords_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "threshold",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Threshold"
+            }
+          },
+          {
+            "in": "query",
+            "name": "num_keywords",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMaximum": 500,
+                  "exclusiveMinimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Num Keywords"
+            }
+          },
+          {
+            "in": "query",
+            "name": "colors",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": false,
+              "title": "Colors"
+            }
+          },
+          {
+            "in": "query",
+            "name": "num_colors",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 10,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": 5,
+              "title": "Num Colors"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lang",
+            "required": false,
+            "schema": {
+              "default": "en",
+              "enum": [
+                "en",
+                "ru",
+                "es",
+                "fr",
+                "de",
+                "pt",
+                "it"
+              ],
+              "title": "Lang",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "url",
+            "required": true,
+            "schema": {
+              "format": "uri",
+              "maxLength": 2083,
+              "minLength": 1,
+              "title": "Url",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeywordsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Keywords Get",
+        "tags": [
+          "keywords"
+        ]
+      },
+      "post": {
+        "operationId": "keywords_v1_keywords_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "threshold",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Threshold"
+            }
+          },
+          {
+            "in": "query",
+            "name": "num_keywords",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMaximum": 500,
+                  "exclusiveMinimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Num Keywords"
+            }
+          },
+          {
+            "in": "query",
+            "name": "colors",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": false,
+              "title": "Colors"
+            }
+          },
+          {
+            "in": "query",
+            "name": "num_colors",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 10,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": 5,
+              "title": "Num Colors"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lang",
+            "required": false,
+            "schema": {
+              "default": "en",
+              "enum": [
+                "en",
+                "ru",
+                "es",
+                "fr",
+                "de",
+                "pt",
+                "it"
+              ],
+              "title": "Lang",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_keywords_v1_keywords_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeywordsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Keywords",
+        "tags": [
+          "keywords"
+        ]
+      }
+    },
+    "/v1/quality": {
+      "get": {
+        "operationId": "quality_get_v1_quality_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "url",
+            "required": true,
+            "schema": {
+              "format": "uri",
+              "maxLength": 2083,
+              "minLength": 1,
+              "title": "Url",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QualityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Quality Get",
+        "tags": [
+          "quality"
+        ]
+      },
+      "post": {
+        "operationId": "quality_v1_quality_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_quality_v1_quality_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QualityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Quality",
+        "tags": [
+          "quality"
+        ]
+      }
+    },
+    "/v1/quality_ugc": {
+      "get": {
+        "operationId": "quality_ugc_get_v1_quality_ugc_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "url",
+            "required": true,
+            "schema": {
+              "format": "uri",
+              "maxLength": 2083,
+              "minLength": 1,
+              "title": "Url",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QualityUGCResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Quality Ugc Get",
+        "tags": [
+          "quality_ugc"
+        ]
+      },
+      "post": {
+        "operationId": "quality_ugc_v1_quality_ugc_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_quality_ugc_v1_quality_ugc_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QualityUGCResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Quality Ugc",
+        "tags": [
+          "quality_ugc"
+        ]
+      }
+    },
+    "/v1/status": {
+      "get": {
+        "operationId": "get_status_v1_status_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImgenStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Status",
+        "tags": [
+          "imgen"
+        ]
+      }
+    },
+    "/v1/transcribe": {
+      "post": {
+        "operationId": "transcribe_v1_transcribe_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ASRRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Transcribe",
+        "tags": [
+          "asr"
+        ]
+      }
+    },
+    "/v1/tts_clone": {
+      "post": {
+        "operationId": "tts_clone_v1_tts_clone_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TTSCloneRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tts Clone",
+        "tags": [
+          "tts"
+        ]
+      }
+    },
+    "/v1/tts_create": {
+      "post": {
+        "operationId": "tts_create_v1_tts_create_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TTSCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tts Create",
+        "tags": [
+          "tts"
+        ]
+      }
+    },
+    "/v1/tts_voice": {
+      "post": {
+        "operationId": "tts_voice_v1_tts_voice_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TTSVoiceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tts Voice",
+        "tags": [
+          "tts"
+        ]
+      }
+    },
+    "/v1/video_edit": {
+      "post": {
+        "operationId": "edit_video_v1_video_edit_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "discriminator": {
+                  "mapping": {
+                    "aleph2": "#/components/schemas/Aleph2VideoEditRequest",
+                    "kling-3-omni": "#/components/schemas/KlingV3OmniVideoEditRequest",
+                    "seedance2": "#/components/schemas/Seedance2VideoEditRequest",
+                    "seedance2-mini": "#/components/schemas/Seedance2VideoEditRequest",
+                    "wan2.7": "#/components/schemas/Wan27VideoEditRequest"
+                  },
+                  "propertyName": "model"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Seedance2VideoEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/KlingV3OmniVideoEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Wan27VideoEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Aleph2VideoEditRequest"
+                  }
+                ],
+                "title": "Data"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit Video",
+        "tags": [
+          "imgen"
+        ]
+      }
+    },
+    "/v1/video_generate": {
+      "post": {
+        "operationId": "generate_video_v1_video_generate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "discriminator": {
+                  "mapping": {
+                    "grok": "#/components/schemas/GrokVideoGenRequest",
+                    "grok15": "#/components/schemas/Grok15VideoGenRequest",
+                    "kling-2.6": "#/components/schemas/KlingV26VideoGenRequest",
+                    "kling-3": "#/components/schemas/KlingV3VideoGenRequest",
+                    "kling-3-omni": "#/components/schemas/KlingV3OmniVideoGenRequest",
+                    "kling-3-turbo": "#/components/schemas/KlingV3TurboVideoGenRequest",
+                    "ltx23": "#/components/schemas/LTX23VideoGenRequest",
+                    "seedance2": "#/components/schemas/Seedance2VideoGenRequest",
+                    "seedance2-mini": "#/components/schemas/Seedance2VideoGenRequest",
+                    "veo-3.1": "#/components/schemas/VeoVideoGenRequest",
+                    "veo-3.1-fast": "#/components/schemas/VeoVideoGenRequest",
+                    "wan2.7": "#/components/schemas/Wan27VideoGenRequest",
+                    "wan22": "#/components/schemas/WAN22VideoGenRequest"
+                  },
+                  "propertyName": "model"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/WAN22VideoGenRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/LTX23VideoGenRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GrokVideoGenRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Grok15VideoGenRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/VeoVideoGenRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Seedance2VideoGenRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/KlingV26VideoGenRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/KlingV3VideoGenRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/KlingV3TurboVideoGenRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/KlingV3OmniVideoGenRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Wan27VideoGenRequest"
+                  }
+                ],
+                "title": "Data"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Generate Video",
+        "tags": [
+          "imgen"
+        ]
+      }
+    },
+    "/v1/video_keywords": {
+      "get": {
+        "operationId": "video_keywords_get_v1_video_keywords_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "threshold",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Threshold"
+            }
+          },
+          {
+            "in": "query",
+            "name": "num_keywords",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMaximum": 500,
+                  "exclusiveMinimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Num Keywords"
+            }
+          },
+          {
+            "in": "query",
+            "name": "colors",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": false,
+              "title": "Colors"
+            }
+          },
+          {
+            "in": "query",
+            "name": "num_colors",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 10,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": 5,
+              "title": "Num Colors"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lang",
+            "required": false,
+            "schema": {
+              "default": "en",
+              "enum": [
+                "en",
+                "ru",
+                "es",
+                "fr",
+                "de",
+                "pt",
+                "it"
+              ],
+              "title": "Lang",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "const": "dynamic",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "url",
+            "required": true,
+            "schema": {
+              "format": "uri",
+              "maxLength": 2083,
+              "minLength": 1,
+              "title": "Url",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeywordsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Video Keywords Get",
+        "tags": [
+          "video_keywords"
+        ]
+      },
+      "post": {
+        "operationId": "video_keywords_v1_video_keywords_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "threshold",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Threshold"
+            }
+          },
+          {
+            "in": "query",
+            "name": "num_keywords",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMaximum": 500,
+                  "exclusiveMinimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Num Keywords"
+            }
+          },
+          {
+            "in": "query",
+            "name": "colors",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": false,
+              "title": "Colors"
+            }
+          },
+          {
+            "in": "query",
+            "name": "num_colors",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 10,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": 5,
+              "title": "Num Colors"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lang",
+            "required": false,
+            "schema": {
+              "default": "en",
+              "enum": [
+                "en",
+                "ru",
+                "es",
+                "fr",
+                "de",
+                "pt",
+                "it"
+              ],
+              "title": "Lang",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "const": "dynamic",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_video_keywords_v1_video_keywords_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeywordsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Video Keywords",
+        "tags": [
+          "video_keywords"
+        ]
+      }
+    },
+    "/v1/video_lipsync": {
+      "post": {
+        "operationId": "video_lipsync_v1_video_lipsync_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LipsyncRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Video Lipsync",
+        "tags": [
+          "lipsync"
+        ]
+      }
+    },
+    "/v1/video_matting": {
+      "post": {
+        "operationId": "video_matting_v1_video_matting_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoMattingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Video Matting",
+        "tags": [
+          "imgen"
+        ]
+      }
+    },
+    "/v1/video_soundtrack": {
+      "post": {
+        "operationId": "video_soundtrack_v1_video_soundtrack_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoSoundtrackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Video Soundtrack",
+        "tags": [
+          "imgen"
+        ]
+      }
+    },
+    "/v1/video_upscale": {
+      "post": {
+        "operationId": "upscale_video_v1_video_upscale_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoUpscaleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upscale Video",
+        "tags": [
+          "imgen"
+        ]
+      }
+    },
+    "/v1/videoswap/create": {
+      "get": {
+        "operationId": "get_videoswap_v1_videoswap_create_get",
+        "parameters": [
+          {
+            "description": "Source image URL",
+            "in": "query",
+            "name": "source_url",
+            "required": true,
+            "schema": {
+              "description": "Source image URL",
+              "format": "uri",
+              "maxLength": 2083,
+              "minLength": 1,
+              "title": "Source Url",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Target video URL",
+            "in": "query",
+            "name": "target_url",
+            "required": true,
+            "schema": {
+              "description": "Target video URL",
+              "format": "uri",
+              "maxLength": 2083,
+              "minLength": 1,
+              "title": "Target Url",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Callback URL",
+            "in": "query",
+            "name": "callback",
+            "required": false,
+            "schema": {
+              "description": "Callback URL",
+              "format": "uri",
+              "maxLength": 2083,
+              "minLength": 1,
+              "title": "Callback",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Result video filename",
+            "in": "query",
+            "name": "title",
+            "required": false,
+            "schema": {
+              "description": "Result video filename",
+              "title": "Title",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Use GFPGAN for face restoration",
+            "in": "query",
+            "name": "use_gfpgan",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Use GFPGAN for face restoration",
+              "title": "Use Gfpgan",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoSwapStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Videoswap",
+        "tags": [
+          "videoswap"
+        ]
+      },
+      "post": {
+        "operationId": "post_videoswap_v1_videoswap_create_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_post_videoswap_v1_videoswap_create_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoSwapStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Videoswap",
+        "tags": [
+          "videoswap"
+        ]
+      }
+    },
+    "/v1/videoswap/status": {
+      "get": {
+        "operationId": "get_status_v1_videoswap_status_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoSwapStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Status",
+        "tags": [
+          "videoswap"
+        ]
+      }
+    },
+    "/v1/videoswap/terminate": {
+      "post": {
+        "operationId": "post_terminate_v1_videoswap_terminate_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Terminate",
+        "tags": [
+          "videoswap"
+        ]
+      }
+    }
+  }
+}
