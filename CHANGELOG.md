@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0] - 2026-09-09
+
+- Add MiniMax H3/Turbo, WAN 3.0, Flux 3, and Seedance 2.5 video models.
+- Add Recraft vector generation, palette controls, and image-to-SVG conversion.
+- Update Grok Imagine models, image-edit input limits, and megapixel controls.
+- Add Topaz 4K video upscaling and 720p lipsync.
+
 ## [0.1.0] - 2026-08-17
 
 Initial public release.

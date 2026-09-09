@@ -18,6 +18,7 @@ from everypixel_cli.mcp_server import create_mcp_server
 
 EXPECTED_TOOLS = {
     "image_generate",
+    "image_vectorize",
     "image_edit",
     "image_upscale",
     "image_angles",
@@ -110,7 +111,15 @@ def test_mcp_server_exposes_application_use_cases_with_generated_schemas() -> No
         "duration"
     ]["anyOf"][0]
     assert video_duration_schema["minimum"] == 1
-    assert video_duration_schema["maximum"] == 15
+    assert video_duration_schema["maximum"] == 30
+    assert tools["image_edit"].input_schema["properties"]["images"]["maxItems"] == 16
+    assert (
+        "minimax-h3"
+        in tools["video_generate"].input_schema["properties"]["model"]["enum"]
+    )
+    assert (
+        "4k" in tools["video_upscale"].input_schema["properties"]["resolution"]["enum"]
+    )
     assert tools["image_generate"].annotations.read_only_hint is False
     assert tools["image_generate"].annotations.destructive_hint is True
     assert tools["task_status"].annotations.read_only_hint is True

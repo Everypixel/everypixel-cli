@@ -39,6 +39,243 @@ def request_multipart_body(route):
     return route.calls[0].request.content
 
 
+@pytest.mark.parametrize(
+    ("model", "canonical"),
+    [
+        ("grok", "grok-imagine"),
+        ("grok-imagine", "grok-imagine"),
+        ("grok-imagine-2", "grok-imagine-2"),
+        ("grok-imagine-2-low", "grok-imagine-2-low"),
+    ],
+)
+@respx.mock
+def test_grok_image_models_and_generic_aliases(model, canonical, monkeypatch):
+    route = mock_async_post("/v1/image_generate")
+    invoke_json(
+        ["image", "generate", "a lake", "--model", model, "--resolution", "2k"],
+        monkeypatch,
+    )
+    specialized = request_json(route)
+    assert specialized["model"] == canonical
+    respx.get("https://api.test/v1/openapi.json").respond(
+        200,
+        json=json.loads(
+            (
+                Path(__file__).parents[1] / "src/everypixel_cli/resources/openapi.json"
+            ).read_text()
+        ),
+    )
+    invoke_json(
+        [
+            "run",
+            "image_generate",
+            "--input",
+            f"model={model}",
+            "--input",
+            "prompt=a lake",
+            "--input",
+            "resolution=2k",
+            "--input",
+            "future_option=false",
+        ],
+        monkeypatch,
+    )
+    generic = json.loads(route.calls[1].request.content)
+    assert generic["model"] == canonical
+    assert generic["future_option"] is False
+
+
+@pytest.mark.parametrize("model", ["topaz-prob-4", "topaz-slp-2.5", "topaz-ast-2"])
+@respx.mock
+def test_topaz_upscale_4k(model, monkeypatch):
+    route = mock_async_post("/v1/video_upscale")
+    invoke_json(
+        [
+            "video",
+            "upscale",
+            "--video",
+            str(FIXTURES / "result-1.mp4"),
+            "--model",
+            model,
+            "--resolution",
+            "4k",
+        ],
+        monkeypatch,
+    )
+    body = request_json(route)
+    assert body["model"] == model
+    assert body["resolution"] == "4k"
+    assert body["video_url"].startswith("data:video/mp4;base64,")
+
+
+@pytest.mark.parametrize(
+    "mode", ["recraftv4_1_vector", "recraftv4_1_pro_vector", "vectorize"]
+)
+@respx.mock
+def test_vector_images_download_svg(mode, monkeypatch, make_temp_dir):
+    endpoint = "/v1/image_vectorize" if mode == "vectorize" else "/v1/image_generate"
+    route = mock_async_post(endpoint)
+    status = respx.get("https://api.test/v1/status").mock(
+        side_effect=[
+            httpx.Response(200, json={"task_id": "abc", "status": "PENDING"}),
+            httpx.Response(
+                200,
+                json={
+                    "task_id": "abc",
+                    "status": "SUCCESS",
+                    "result": "https://cdn.test/vector",
+                },
+            ),
+        ]
+    )
+    svg = b'<svg xmlns="http://www.w3.org/2000/svg"/>'
+    download = respx.get("https://cdn.test/vector").respond(200, content=svg)
+    folder = make_temp_dir("vectors")
+    if mode == "vectorize":
+        args = ["image", "vectorize", str(FIXTURES / "sample.png")]
+    else:
+        args = [
+            "image",
+            "generate",
+            "a mountain icon",
+            "--model",
+            mode,
+            "--controls",
+            '{"colors":[{"rgb":[0,128,255],"weight":0}]}',
+            "--seed",
+            "0",
+        ]
+    invoke_json(
+        ["--poll-interval", "0.01", *args, "--download", str(folder)], monkeypatch
+    )
+    assert status.call_count == 2
+    assert download.call_count == 1
+    files = list(folder.iterdir())
+    assert len(files) == 1 and files[0].suffix == ".svg"
+    assert files[0].read_bytes() == svg
+    body = request_json(route)
+    if mode == "vectorize":
+        assert body["image_url"].startswith("data:image/png;base64,")
+    else:
+        assert body["controls"]["colors"][0] == {"rgb": [0, 128, 255], "weight": 0}
+        assert body["seed"] == 0
+        assert "resolution" not in body
+
+
+@pytest.mark.parametrize("command", ["tts-create", "tts-clone", "tts-voice"])
+@pytest.mark.parametrize("source", ["text", "file", "generic"])
+@respx.mock
+def test_tts_sends_full_text_without_local_limit(
+    command, source, monkeypatch, make_temp_dir
+):
+    route = mock_async_post(f"/v1/{command.replace('-', '_')}")
+    monkeypatch.setenv("EVERYPIXEL_CLIENT_ID", "id")
+    monkeypatch.setenv("EVERYPIXEL_CLIENT_SECRET", "secret")
+
+    def arguments(text):
+        audio = (
+            ["--audio", str(FIXTURES / "result-2.mp3")]
+            if command == "tts-clone"
+            else []
+        )
+        if source == "generic":
+            return [
+                "run",
+                f"/v1/{command.replace('-', '_')}",
+                "--input",
+                f"text={text}",
+                "--input",
+                "audio_url=https://cdn.test/audio.mp3",
+            ]
+        if source == "file":
+            path = folder / "text.txt"
+            path.write_text(text, encoding="utf-8")
+            return ["audio", command, *audio, "--text-file", str(path)]
+        return ["audio", command, *audio, "--text", text]
+
+    folder = make_temp_dir("tts-text")
+    text = "я" * 200 + " "
+    invoke_json(arguments(text), monkeypatch)
+    assert request_json(route)["text"] == text
+    assert route.call_count == 1
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["image", "generate", "x", "--model", "wan22"],
+        ["image", "generate", "x", "--model", "grok_quality"],
+        ["image", "generate", "x", "--style", "instagram"],
+        ["image", "generate", "x", "--controls", "{}"],
+        [
+            "image",
+            "generate",
+            "x",
+            "--model",
+            "recraftv4_1_vector",
+            "--resolution",
+            "2k",
+        ],
+        [
+            "image",
+            "generate",
+            "x",
+            "--model",
+            "recraftv4_1_vector",
+            "--controls",
+            '{"colors":[{"rgb":[0,0,0],"weight":0.7},{"rgb":[255,255,255],"weight":0.4}]}',
+        ],
+        [
+            "image",
+            "edit",
+            "x",
+            "--image",
+            "https://img.test/a.png",
+            "--megapixel-ratio",
+            "1.6",
+        ],
+        ["video", "upscale", "--task-id", "abc", "--resolution", "4k"],
+        ["video", "generate", "x", "--model", "minimax-h3", "--duration", "2"],
+        ["video", "generate", " ", "--model", "minimax-h3"],
+        ["video", "generate", "x", "--model", "minimax-h3", "--no-generate-audio"],
+        ["video", "generate", "x", "--model", "seedance2", "--duration", "30"],
+        ["video", "generate", "x", "--model", "seedance2.5", "--resolution", "4k"],
+        ["video", "generate", "x", "--model", "grok15"],
+        [
+            "video",
+            "edit",
+            "x",
+            "--model",
+            "flux3",
+            "--video",
+            "https://cdn.test/v.mp4",
+            "--duration",
+            "20",
+        ],
+        [
+            "video",
+            "edit",
+            "x",
+            "--model",
+            "flux3",
+            "--video",
+            "https://cdn.test/v.mp4",
+            "--image",
+            "https://img.test/a.png",
+        ],
+    ],
+)
+@respx.mock
+def test_updated_contract_rejects_invalid_cli_inputs_before_http(args):
+    result = runner.invoke(
+        app, ["--base-url", "https://api.test", "-j", "--no-wait", *args]
+    )
+    assert result.exit_code == 2
+    assert json.loads(result.stdout)["error"]["code"] == "validation_error"
+    assert result.stderr == ""
+    assert not respx.calls
+
+
 @respx.mock
 def test_basic_auth_header_sent():
     route = respx.post("https://api.test/v1/image_generate").mock(
@@ -601,8 +838,14 @@ def test_wan_image_generate_uses_provider_default_resolution(monkeypatch):
     assert body["resolution"] == "2k"
 
 
+@pytest.mark.parametrize(
+    ("model", "count", "resolution", "size"),
+    [("gpt-image-2-high", 16, "3k", "square"), ("gemini-3-pro", 14, "4k", None)],
+)
 @respx.mock
-def test_gpt_image_edit_sends_3k_and_default_square_size(monkeypatch):
+def test_image_edit_accepts_expanded_input_limits(
+    model, count, resolution, size, monkeypatch
+):
     route = mock_async_post("/v1/image_edit")
 
     invoke_json(
@@ -610,20 +853,27 @@ def test_gpt_image_edit_sends_3k_and_default_square_size(monkeypatch):
             "image",
             "edit",
             "make it brighter",
-            "--image",
-            "https://img.test/source.png",
+            *[
+                value
+                for _ in range(count)
+                for value in ("--image", "https://img.test/source.png")
+            ],
             "--model",
-            "gpt-image-2-high",
+            model,
             "--resolution",
-            "3k",
+            resolution,
+            "--megapixel-ratio",
+            "1.5",
         ],
         monkeypatch,
     )
 
     body = request_json(route)
-    assert body["model"] == "gpt-image-2-high"
-    assert body["resolution"] == "3k"
-    assert body["image_size"] == "square"
+    assert body["model"] == model
+    assert body["resolution"] == resolution
+    assert body.get("image_size") == size
+    assert len(body["image_urls"]) == count
+    assert body["megapixel_ratio"] == 1.5
 
 
 @respx.mock
@@ -650,6 +900,7 @@ def test_common_output_flag_before_command(monkeypatch):
     assert request_json(route) == {
         "prompt": "woman smiling",
         "model": "zimage",
+        "style": "portrait",
         "image_size": "square",
         "resolution": "1k",
         "seed": -1,
@@ -982,8 +1233,9 @@ def test_video_generate_payload(monkeypatch):
     }
 
 
+@pytest.mark.parametrize("model", ["minimax-h3-turbo", "minimax-h3"])
 @respx.mock
-def test_video_generate_payload_with_wan22_lora(monkeypatch):
+def test_video_generate_minimax_reference_payload(model, monkeypatch):
     route = mock_async_post("/v1/video_generate")
 
     invoke_json(
@@ -992,13 +1244,11 @@ def test_video_generate_payload_with_wan22_lora(monkeypatch):
             "generate",
             "product shot",
             "--model",
-            "wan22",
-            "--resolution",
-            "480p",
-            "--lora-high-url",
-            "https://cdn.test/high.safetensors",
-            "--lora-low-url",
-            "https://cdn.test/low.safetensors",
+            model,
+            "--reference-image",
+            str(FIXTURES / "sample.png"),
+            "--seed",
+            "18446744073709551615",
             "--callback-url",
             "https://hooks.test/callback",
         ],
@@ -1006,8 +1256,12 @@ def test_video_generate_payload_with_wan22_lora(monkeypatch):
     )
 
     body = request_json(route)
-    assert body["lora_high_url"] == "https://cdn.test/high.safetensors"
-    assert body["lora_low_url"] == "https://cdn.test/low.safetensors"
+    assert body["model"] == model
+    assert body["duration"] == 5
+    assert body["resolution"] == "768p"
+    assert body["aspect_ratio"] == "7:4"
+    assert body["seed"] == 18446744073709551615
+    assert body["reference_image_urls"][0].startswith("data:image/png;base64,")
     assert body["callback_url"] == "https://hooks.test/callback"
 
 
@@ -1084,6 +1338,7 @@ def test_video_upscale_payload(monkeypatch):
 
     assert request_json(route) == {
         "video_from_task_id": "source-task",
+        "model": "seedvr2",
         "resolution": "1080p",
     }
 
@@ -1101,7 +1356,7 @@ def test_lipsync_video_payload(monkeypatch):
             "--audio",
             "https://cdn.test/voice.mp3",
             "--resolution",
-            "480p",
+            "720p",
             "--callback-url",
             "https://hooks.test/callback",
         ],
@@ -1111,7 +1366,7 @@ def test_lipsync_video_payload(monkeypatch):
     assert request_json(route) == {
         "video_url": "https://cdn.test/in.mp4",
         "audio_url": "https://cdn.test/voice.mp3",
-        "resolution": "480p",
+        "resolution": "720p",
         "seed": -1,
         "callback_url": "https://hooks.test/callback",
     }

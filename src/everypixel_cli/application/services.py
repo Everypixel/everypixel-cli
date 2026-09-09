@@ -7,9 +7,9 @@ import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, get_args
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from ..errors import (
     APIResponseError,
@@ -36,12 +36,16 @@ from ..schemas import (
     ImageEditPayload,
     ImageGeneratePayload,
     ImageUpscalePayload,
+    ImageVectorizePayload,
     LipsyncImagePayload,
     LipsyncVideoPayload,
+    RecraftGeneratePayload,
     TaskResponse,
     VideoEditRequest,
     VideoGenerateRequest,
+    VideoGenerateModel,
     VideoUpscalePayload,
+    normalize_grok_model,
 )
 from .models import (
     ExecutionOptions,
@@ -328,6 +332,8 @@ def fallback_extension_for_endpoint(path: str) -> str:
     """Infer the existing conservative extension fallback from an endpoint path."""
 
     lowered = path.lower()
+    if lowered == "/v1/image_vectorize":
+        return ".svg"
     if "transcribe" in lowered or "asr" in lowered:
         return ".txt"
     if "video" in lowered or "lipsync" in lowered:
@@ -468,6 +474,31 @@ def _build_wan_video_edit_payload(inputs: _VideoEditInputs) -> dict[str, Any]:
     )
 
 
+def _build_flux3_video_edit_payload(inputs: _VideoEditInputs) -> dict[str, Any]:
+    _reject_video_edit_options(
+        inputs.model,
+        {
+            "image": inputs.images,
+            "audio": inputs.audio,
+            "seed": inputs.seed,
+            "keyframe": inputs.keyframes,
+            "public_figure_threshold": inputs.public_figure_threshold,
+        },
+    )
+    return _validated_video_edit_payload(
+        {
+            "prompt": inputs.prompt,
+            "model": inputs.model,
+            "duration": inputs.duration,
+            "resolution": inputs.resolution,
+            "aspect_ratio": inputs.aspect_ratio,
+            "video_url": media_value(inputs.video) if inputs.video else None,
+            "generate_audio": inputs.generate_audio,
+            "callback_url": inputs.callback_url,
+        }
+    )
+
+
 def _parse_aleph_keyframe(value: str) -> dict[str, Any]:
     try:
         keyframe = json.loads(value)
@@ -509,9 +540,11 @@ def _build_aleph_video_edit_payload(inputs: _VideoEditInputs) -> dict[str, Any]:
 _VIDEO_EDIT_BUILDERS: dict[str, Callable[[_VideoEditInputs], dict[str, Any]]] = {
     "seedance2": _build_seedance_video_edit_payload,
     "seedance2-mini": _build_seedance_video_edit_payload,
+    "seedance2.5": _build_seedance_video_edit_payload,
     "kling-3-omni": _build_kling_video_edit_payload,
     "wan2.7": _build_wan_video_edit_payload,
     "aleph2": _build_aleph_video_edit_payload,
+    "flux3": _build_flux3_video_edit_payload,
 }
 
 
@@ -557,14 +590,30 @@ def build_video_edit_payload(
     return builder(inputs)
 
 
+_IMAGE_GENERATE_BUILDERS: dict[str, type[BaseModel]] = {
+    "recraftv4_1_vector": RecraftGeneratePayload,
+    "recraftv4_1_pro_vector": RecraftGeneratePayload,
+}
+
+
 def build_image_generate_payload(**values: Any) -> dict[str, Any]:
     """Validate and build image generation payloads including local media."""
 
     image = values.pop("image", None)
-    return ImageGeneratePayload(
-        **{key: value for key, value in values.items() if value is not None},
-        image_url=media_value(image) if image else None,
-    ).model_dump(exclude_none=True)
+    if image is not None:
+        values["image_url"] = media_value(image)
+    controls = values.get("controls")
+    if isinstance(controls, str):
+        try:
+            values["controls"] = json.loads(controls)
+        except json.JSONDecodeError as exc:
+            raise InputParsingError("Unable to parse Recraft controls JSON") from exc
+    builder = _IMAGE_GENERATE_BUILDERS.get(
+        values.get("model", "zimage"), ImageGeneratePayload
+    )
+    return builder.model_validate(
+        {key: value for key, value in values.items() if value is not None}
+    ).model_dump(mode="json", exclude_none=True)
 
 
 def build_image_edit_payload(**values: Any) -> dict[str, Any]:
@@ -574,7 +623,15 @@ def build_image_edit_payload(**values: Any) -> dict[str, Any]:
     return ImageEditPayload(
         **{key: value for key, value in values.items() if value is not None},
         image_urls=[media_value(item) for item in images],
-    ).model_dump(exclude_none=True)
+    ).model_dump(mode="json", exclude_none=True)
+
+
+def build_image_vectorize_payload(
+    *, image: str, callback_url: str | None
+) -> dict[str, Any]:
+    return ImageVectorizePayload.model_validate(
+        {"image_url": media_value(image), "callback_url": callback_url}
+    ).model_dump(mode="json", exclude_none=True)
 
 
 def build_image_upscale_payload(**values: Any) -> dict[str, Any]:
@@ -594,13 +651,15 @@ def build_video_generate_payload(**values: Any) -> dict[str, Any]:
     last_image = values.pop("last_image", None)
     reference_images = values.pop("reference_images", [])
     reference_videos = values.pop("reference_videos", [])
+    values = normalize_grok_model(values)
     if values.get("duration") is None:
         model = values.get("model")
         required_duration_defaults = {
-            "wan22": 5,
+            "minimax-h3-turbo": 5,
+            "minimax-h3": 5,
             "ltx23": 5,
-            "grok": 5,
-            "grok15": 5,
+            "grok-imagine": 5,
+            "grok-imagine-1.5": 5,
         }
         values["duration"] = (
             required_duration_defaults.get(model) if isinstance(model, str) else None
@@ -771,6 +830,8 @@ class ApplicationServices:
         seed: int,
         callback_url: str | None,
         execution: ExecutionOptions,
+        lora_url: str | None = None,
+        controls: dict[str, Any] | str | None = None,
     ) -> OperationResult:
         payload = build_image_generate_payload(
             prompt=prompt,
@@ -781,12 +842,33 @@ class ApplicationServices:
             resolution=resolution,
             seed=seed,
             callback_url=callback_url,
+            lora_url=lora_url,
+            controls=controls,
         )
         return self._execute_async(
             endpoint="/v1/image_generate",
             payload=payload,
             execution=execution,
-            fallback_extension=".png",
+            fallback_extension=(
+                ".svg" if model in _IMAGE_GENERATE_BUILDERS else ".png"
+            ),
+        )
+
+    def execute_image_vectorize(
+        self,
+        *,
+        image: str,
+        callback_url: str | None = None,
+        execution: ExecutionOptions,
+    ) -> OperationResult:
+        return self._execute_async(
+            endpoint="/v1/image_vectorize",
+            payload=build_image_vectorize_payload(
+                image=image,
+                callback_url=callback_url,
+            ),
+            execution=execution,
+            fallback_extension=".svg",
         )
 
     def execute_image_edit(
@@ -800,6 +882,7 @@ class ApplicationServices:
         seed: int,
         callback_url: str | None,
         execution: ExecutionOptions,
+        megapixel_ratio: float = 1.0,
     ) -> OperationResult:
         payload = build_image_edit_payload(
             prompt=prompt,
@@ -807,6 +890,7 @@ class ApplicationServices:
             model=model,
             image_size=image_size,
             resolution=resolution,
+            megapixel_ratio=megapixel_ratio,
             seed=seed,
             callback_url=callback_url,
         )
@@ -885,8 +969,6 @@ class ApplicationServices:
         duration: int | None,
         resolution: str | None,
         aspect_ratio: str | None,
-        lora_high_url: str | None = None,
-        lora_low_url: str | None = None,
         reference_images: list[str] | None = None,
         reference_videos: list[str] | None = None,
         image: str | None = None,
@@ -902,8 +984,6 @@ class ApplicationServices:
             duration=duration,
             resolution=resolution,
             aspect_ratio=aspect_ratio,
-            lora_high_url=lora_high_url,
-            lora_low_url=lora_low_url,
             reference_images=reference_images or [],
             reference_videos=reference_videos or [],
             image=image,
@@ -966,11 +1046,15 @@ class ApplicationServices:
         task_id: str | None,
         resolution: str,
         execution: ExecutionOptions,
+        model: str = "seedvr2",
+        callback_url: str | None = None,
     ) -> OperationResult:
         payload = build_video_upscale_payload(
             video=video,
             video_from_task_id=task_id,
             resolution=resolution,
+            model=model,
+            callback_url=callback_url,
         )
         return self._execute_async(
             endpoint="/v1/video_upscale",
@@ -1169,8 +1253,10 @@ class ApplicationServices:
             path = operation.path
             resolved_method = operation.method
         resolved_method = resolved_method or "POST"
-        if path == "/v1/video_edit":
+        if path in {"/v1/video_edit", "/v1/video_generate"}:
             normalize_video_edit_content(payload)
+        if path == "/v1/image_vectorize" and isinstance(payload.get("image_url"), str):
+            payload["image_url"] = media_value(payload["image_url"])
         if help_schema:
             return OperationResult(
                 value=operation_help(
@@ -1181,6 +1267,14 @@ class ApplicationServices:
                     schema_source=schema_source,
                 )
             )
+        if path in {"/v1/image_generate", "/v1/image_edit", "/v1/video_generate"}:
+            payload = normalize_grok_model(payload)
+        if path == "/v1/video_generate" and payload.get("model") in get_args(
+            VideoGenerateModel
+        ):
+            _VIDEO_GENERATE_ADAPTER.validate_python(payload, extra="ignore")
+        if path == "/v1/image_vectorize":
+            ImageVectorizePayload.model_validate(payload)
         if path == "/v1/video_edit":
             # Generic callers may send forward-compatible fields that the local
             # specialized model does not know yet; validate known semantics
@@ -1205,7 +1299,12 @@ class ApplicationServices:
                 method=resolved_method,
                 payload=payload,
                 execution=execution,
-                fallback_extension=fallback_extension_for_endpoint(path),
+                fallback_extension=(
+                    ".svg"
+                    if path == "/v1/image_generate"
+                    and payload.get("model") in _IMAGE_GENERATE_BUILDERS
+                    else fallback_extension_for_endpoint(path)
+                ),
             )
         )
 
@@ -1322,17 +1421,19 @@ def parse_generic_payload(
 
 
 def normalize_video_edit_content(payload: dict[str, Any]) -> None:
-    """Encode local generic ``video_edit`` references as data URIs."""
+    """Encode local generic video frames and references as data URIs."""
 
-    video_url = payload.get("video_url")
-    if isinstance(video_url, str):
-        payload["video_url"] = media_value(video_url)
-    reference_image_urls = payload.get("reference_image_urls")
-    if isinstance(reference_image_urls, list):
-        payload["reference_image_urls"] = [
-            media_value(value) if isinstance(value, str) else value
-            for value in reference_image_urls
-        ]
+    for key in ("video_url", "image_url", "image_last_url"):
+        value = payload.get(key)
+        if isinstance(value, str):
+            payload[key] = media_value(value)
+    for key in ("reference_image_urls", "reference_video_urls"):
+        values = payload.get(key)
+        if isinstance(values, list):
+            payload[key] = [
+                media_value(value) if isinstance(value, str) else value
+                for value in values
+            ]
     keyframes = payload.get("keyframes")
     if isinstance(keyframes, list):
         for keyframe in keyframes:

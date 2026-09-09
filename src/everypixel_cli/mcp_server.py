@@ -49,6 +49,7 @@ from .schemas import (
     LipsyncImageResolution,
     LipsyncVideoResolution,
     PublicFigureThreshold,
+    RecraftControls,
     VideoEditAspectRatio,
     VideoEditDuration,
     VideoEditModel,
@@ -58,6 +59,7 @@ from .schemas import (
     VideoGenerateModel,
     VideoGenerateResolution,
     VideoUpscaleResolution,
+    VideoUpscaleModel,
 )
 
 
@@ -166,6 +168,8 @@ class ImageGenerateInput(MCPToolInput):
     image_size: ImageSize = "square"
     style: ImageStyle | None = None
     image: str | None = None
+    lora_url: str | None = None
+    controls: RecraftControls | None = None
     resolution: ImageResolution | None = None
     seed: int = -1
     callback_url: str | None = None
@@ -178,6 +182,7 @@ class ImageEditInput(MCPToolInput):
     model: ImageEditModel = "flux2"
     image_size: ImageSize | None = None
     resolution: ImageResolution | None = None
+    megapixel_ratio: float = Field(default=1.0, ge=0.5, le=1.5)
     seed: int = -1
     callback_url: str | None = None
     execution: MCPExecutionOptions | None = None
@@ -200,6 +205,12 @@ class ImageAnglesInput(MCPToolInput):
     execution: MCPExecutionOptions | None = None
 
 
+class ImageVectorizeInput(MCPToolInput):
+    image: str
+    callback_url: str | None = None
+    execution: MCPExecutionOptions | None = None
+
+
 class ImageColorsInput(MCPToolInput):
     image: str
     reference: str
@@ -211,9 +222,7 @@ class VideoGenerateInput(MCPToolInput):
     model: VideoGenerateModel = "ltx23"
     duration: VideoGenerateDuration | None = None
     resolution: VideoGenerateResolution | None = None
-    aspect_ratio: VideoGenerateAspectRatio | None = "16:9"
-    lora_high_url: str | None = None
-    lora_low_url: str | None = None
+    aspect_ratio: VideoGenerateAspectRatio | None = None
     reference_images: list[str] | None = None
     reference_videos: list[str] | None = None
     image: str | None = None
@@ -245,6 +254,8 @@ class VideoUpscaleInput(MCPToolInput):
     video: str | None = None
     task_id: str | None = None
     resolution: VideoUpscaleResolution = "1080p"
+    model: VideoUpscaleModel = "seedvr2"
+    callback_url: str | None = None
     execution: MCPExecutionOptions | None = None
 
 
@@ -480,6 +491,12 @@ def create_mcp_server(
             image_size=arguments.image_size,
             style=arguments.style,
             image=arguments.image,
+            lora_url=arguments.lora_url,
+            controls=(
+                arguments.controls.model_dump(mode="json", exclude_none=True)
+                if arguments.controls is not None
+                else None
+            ),
             resolution=arguments.resolution,
             seed=arguments.seed,
             callback_url=arguments.callback_url,
@@ -496,7 +513,18 @@ def create_mcp_server(
             model=arguments.model,
             image_size=arguments.image_size,
             resolution=arguments.resolution,
+            megapixel_ratio=arguments.megapixel_ratio,
             seed=arguments.seed,
+            callback_url=arguments.callback_url,
+            execution=_execution(arguments.execution),
+        )
+
+    @registry.tool(ImageVectorizeInput, annotations=LOCAL_WRITE)
+    def image_vectorize(arguments: ImageVectorizeInput) -> Any:
+        """Convert an image URL or local file to SVG."""
+
+        return services_factory().execute_image_vectorize(
+            image=arguments.image,
             callback_url=arguments.callback_url,
             execution=_execution(arguments.execution),
         )
@@ -546,8 +574,6 @@ def create_mcp_server(
             duration=arguments.duration,
             resolution=arguments.resolution,
             aspect_ratio=arguments.aspect_ratio,
-            lora_high_url=arguments.lora_high_url,
-            lora_low_url=arguments.lora_low_url,
             reference_images=arguments.reference_images,
             reference_videos=arguments.reference_videos,
             image=arguments.image,
@@ -591,6 +617,8 @@ def create_mcp_server(
             video=arguments.video,
             task_id=arguments.task_id,
             resolution=arguments.resolution,
+            model=arguments.model,
+            callback_url=arguments.callback_url,
             execution=_execution(arguments.execution),
         )
 

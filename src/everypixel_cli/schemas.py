@@ -9,10 +9,13 @@ from __future__ import annotations
 from typing import Annotated, Any, Literal
 
 from pydantic import (
+    AfterValidator,
     BaseModel,
+    BeforeValidator,
     ConfigDict,
     Discriminator,
     Field,
+    HttpUrl,
     model_validator,
 )
 
@@ -26,21 +29,17 @@ ImageSize = Literal[
     "landscape_4_3",
     "landscape_16_9",
 ]
-ImageStyle = Literal[
-    "instagram",
-    "transparent",
-    "replication",
-    "basic",
-]
+ImageStyle = Literal["portrait", "transparent"]
 ImageResolution = Literal["1k", "2k", "3k", "4k"]
-ImageGenerateModel = Literal[
+RasterImageGenerateModel = Literal[
     "zimage",
-    "wan22",
     "wan2.7",
     "wan2.7-pro",
     "flux2",
     "grok",
-    "grok_quality",
+    "grok-imagine",
+    "grok-imagine-2",
+    "grok-imagine-2-low",
     "gemini-3.1-flash",
     "gemini-3-pro",
     "seedream-5-pro",
@@ -55,7 +54,9 @@ ImageEditModel = Literal[
     "wan2.7",
     "wan2.7-pro",
     "grok",
-    "grok_quality",
+    "grok-imagine",
+    "grok-imagine-2",
+    "grok-imagine-2-low",
     "gemini-3.1-flash",
     "gemini-3-pro",
     "seedream-5-pro",
@@ -66,6 +67,9 @@ ImageEditModel = Literal[
 ]
 
 _GEMINI_IMAGE_MODELS = {"gemini-3.1-flash", "gemini-3-pro"}
+_GROK_IMAGE_MODELS = {"grok-imagine", "grok-imagine-2", "grok-imagine-2-low"}
+RecraftVectorModel = Literal["recraftv4_1_vector", "recraftv4_1_pro_vector"]
+ImageGenerateModel = Literal[RasterImageGenerateModel, RecraftVectorModel]
 _WAN_IMAGE_MODELS = {"wan2.7", "wan2.7-pro"}
 _SEEDREAM_IMAGE_MODELS = {"seedream-5-pro", "seedream-5"}
 _GPT_IMAGE_2_MODELS = {
@@ -78,15 +82,16 @@ _IMAGE_EDIT_MODEL_MAX_IMAGES = {
     "qwen": 3,
     "wan2.7": 9,
     "wan2.7-pro": 9,
-    "grok": 3,
-    "grok_quality": 3,
-    "gemini-3.1-flash": 5,
-    "gemini-3-pro": 5,
+    "grok-imagine": 3,
+    "grok-imagine-2": 3,
+    "grok-imagine-2-low": 3,
+    "gemini-3.1-flash": 14,
+    "gemini-3-pro": 14,
     "seedream-5-pro": 10,
     "seedream-5": 14,
-    "gpt-image-2-low": 5,
-    "gpt-image-2-medium": 5,
-    "gpt-image-2-high": 5,
+    "gpt-image-2-low": 16,
+    "gpt-image-2-medium": 16,
+    "gpt-image-2-high": 16,
 }
 ImageEditMedia = Annotated[
     list[str],
@@ -104,38 +109,102 @@ class TaskResponse(BaseModel):
     error: str | None = None
 
 
+def normalize_grok_model(value: Any) -> Any:
+    """Preserve public Grok aliases while sending canonical model names."""
+
+    if isinstance(value, dict) and value.get("model") in ("grok", "grok15"):
+        return {
+            **value,
+            "model": {"grok": "grok-imagine", "grok15": "grok-imagine-1.5"}[
+                value["model"]
+            ],
+        }
+    return value
+
+
+class RecraftColor(BaseModel):
+    rgb: tuple[
+        Annotated[int, Field(ge=0, le=255)],
+        Annotated[int, Field(ge=0, le=255)],
+        Annotated[int, Field(ge=0, le=255)],
+    ]
+    weight: float | None = Field(default=None, ge=0, le=1)
+
+
+class RecraftControls(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    colors: list[RecraftColor] = Field(default_factory=list, max_length=12)
+    background_color: RecraftColor | None = None
+
+    @model_validator(mode="after")
+    def validate_weights(self) -> "RecraftControls":
+        if sum(color.weight or 0 for color in self.colors) > 1:
+            raise ValueError("The sum of Recraft color weights must not exceed 1")
+        return self
+
+
+class RecraftGeneratePayload(BaseModel):
+    """Vector generation uses size and palette controls instead of raster options."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    prompt: str = Field(min_length=1, max_length=10_000)
+    model: RecraftVectorModel
+    image_size: ImageSize = "square"
+    seed: int = Field(default=-1, ge=-1, le=4_294_967_295)
+    controls: RecraftControls | None = None
+    callback_url: HttpUrl | None = None
+
+
+class ImageVectorizePayload(BaseModel):
+    image_url: str
+    callback_url: HttpUrl | None = None
+
+    @model_validator(mode="after")
+    def validate_image(self) -> "ImageVectorizePayload":
+        validate_frame_inputs(self.image_url, None)
+        return self
+
+
 class ImageGeneratePayload(BaseModel):
     """Payload for image generation."""
 
+    model_config = ConfigDict(extra="forbid")
+
     prompt: str
-    model: ImageGenerateModel = "zimage"
+    model: RasterImageGenerateModel = "zimage"
     image_size: ImageSize = "square"
     style: ImageStyle | None = None
     resolution: ImageResolution = "1k"
     seed: int = -1
     image_url: str | None = None
+    lora_url: HttpUrl | None = None
     callback_url: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_model(cls, value: Any) -> Any:
+        return normalize_grok_model(value)
 
     @model_validator(mode="after")
     def validate_model_constraints(self) -> "ImageGeneratePayload":
         """Validate provider-specific styles, inputs, and resolutions."""
 
         style = self.style
+        if style is None and self.model == "zimage":
+            self.style = "portrait"
         if style is not None:
             expected_models = {
-                "basic": "wan22",
-                "instagram": "wan22",
-                "replication": "wan22",
+                "portrait": "zimage",
                 "transparent": "flux2",
             }
             if self.model != expected_models[style]:
                 raise ValueError(
                     f"Model {self.model} is not compatible with style {style}"
                 )
-            if style == "replication" and not self.image_url:
-                raise ValueError(f"{style} style requires --image")
 
-        if self.model in {"grok", "grok_quality"} and self.resolution not in {
+        if self.model in _GROK_IMAGE_MODELS and self.resolution not in {
             "1k",
             "2k",
         }:
@@ -209,8 +278,14 @@ class ImageEditPayload(BaseModel):
     model: ImageEditModel = "flux2"
     image_size: ImageSize | None = None
     resolution: ImageResolution = "1k"
+    megapixel_ratio: float = Field(default=1.0, ge=0.5, le=1.5)
     seed: int = -1
     callback_url: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_model(cls, value: Any) -> Any:
+        return normalize_grok_model(value)
 
     @model_validator(mode="after")
     def validate_model_limits(self) -> "ImageEditPayload":
@@ -222,7 +297,7 @@ class ImageEditPayload(BaseModel):
         if len(self.image_urls) > max_images:
             raise ValueError(f"{self.model} supports a maximum of {max_images} images")
 
-        if self.model in {"grok", "grok_quality"} and self.resolution not in {
+        if self.model in _GROK_IMAGE_MODELS and self.resolution not in {
             "1k",
             "2k",
         }:
@@ -284,28 +359,36 @@ VeoVideoResolution = Literal["720p", "1080p", "4k"]
 VeoVideoAspectRatio = Literal["16:9", "9:16"]
 Aleph2AspectRatio = Literal["16:9", "4:3", "3:2", "1:1", "2:3", "3:4", "9:16", "21:9"]
 VideoGenerateModel = Literal[
-    "wan22",
+    "minimax-h3-turbo",
+    "minimax-h3",
     "ltx23",
     "grok",
     "grok15",
+    "grok-imagine",
+    "grok-imagine-1.5",
+    "flux3",
     "veo-3.1",
     "veo-3.1-fast",
     "seedance2",
     "seedance2-mini",
+    "seedance2.5",
     "kling-2.6",
     "kling-3",
     "kling-3-turbo",
     "kling-3-omni",
     "wan2.7",
+    "wan3.0",
 ]
 VideoEditModel = Literal[
     "seedance2",
     "seedance2-mini",
+    "seedance2.5",
     "kling-3-omni",
     "wan2.7",
     "aleph2",
+    "flux3",
 ]
-VideoGenerateResolution = Literal["360p", "480p", "720p", "1080p", "4k"]
+VideoGenerateResolution = Literal["360p", "480p", "720p", "768p", "1080p", "4k"]
 VideoEditResolution = Literal["480p", "720p", "1080p", "4k"]
 VideoGenerateAspectRatio = Literal[
     "16:9",
@@ -314,10 +397,15 @@ VideoGenerateAspectRatio = Literal[
     "3:4",
     "9:16",
     "21:9",
+    "2:1",
+    "7:4",
+    "4:7",
+    "adaptive",
 ]
-VideoEditAspectRatio = Aleph2AspectRatio
-VideoGenerateDuration = Annotated[int, Field(ge=1, le=15)]
-VideoEditDuration = Annotated[int, Field(ge=2, le=15)]
+Flux3VideoAspectRatio = Literal["21:9", "2:1", "16:9", "4:3", "1:1", "3:4", "9:16"]
+VideoEditAspectRatio = Literal[Aleph2AspectRatio, Flux3VideoAspectRatio]
+VideoGenerateDuration = Annotated[int, Field(ge=1, le=30)]
+VideoEditDuration = Annotated[int, Field(ge=2, le=30)]
 PublicFigureThreshold = Literal["auto", "low"]
 
 
@@ -327,23 +415,26 @@ class _StrictVideoPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class WAN22VideoGenRequest(_StrictVideoPayload):
-    prompt: str
-    model: Literal["wan22"] = "wan22"
-    duration: int = Field(ge=1, le=10)
-    resolution: Literal["360p", "480p"] = "480p"
-    aspect_ratio: CommonVideoAspectRatio = "16:9"
-    seed: int = -1
-    lora_high_url: str | None = None
-    lora_low_url: str | None = None
+class MiniMaxH3VideoGenRequest(_StrictVideoPayload):
+    prompt: str = Field(min_length=1)
+    model: Literal["minimax-h3-turbo", "minimax-h3"] = "minimax-h3-turbo"
+    duration: int = Field(ge=3, le=15)
+    resolution: Literal["768p"] = "768p"
+    aspect_ratio: Literal["7:4", "4:7", "1:1"] = "7:4"
+    seed: int = Field(default=-1, ge=-1, le=18_446_744_073_709_551_615)
+    image_url: str | None = None
+    image_last_url: str | None = None
+    reference_image_urls: list[str] = Field(default_factory=list, max_length=1)
     callback_url: str | None = None
 
     @model_validator(mode="after")
-    def validate_lora_urls(self) -> "WAN22VideoGenRequest":
-        if bool(self.lora_high_url) != bool(self.lora_low_url):
-            raise ValueError(
-                "Both lora_high_url and lora_low_url must be provided together"
-            )
+    def validate_media(self) -> "MiniMaxH3VideoGenRequest":
+        if not self.prompt.strip():
+            raise ValueError("prompt must not be blank")
+        validate_frame_inputs(self.image_url, self.image_last_url)
+        validate_reference_inputs(self.reference_image_urls, [])
+        if self.reference_image_urls and (self.image_url or self.image_last_url):
+            raise ValueError("Frame images and reference_image_urls cannot be combined")
         return self
 
 
@@ -361,7 +452,7 @@ class LTX23VideoGenRequest(_StrictVideoPayload):
 
 class GrokVideoGenRequest(_StrictVideoPayload):
     prompt: str
-    model: Literal["grok"] = "grok"
+    model: Literal["grok-imagine"] = "grok-imagine"
     duration: int = Field(ge=1, le=15)
     resolution: Literal["480p", "720p"] = "480p"
     aspect_ratio: CommonVideoAspectRatio = "16:9"
@@ -371,11 +462,11 @@ class GrokVideoGenRequest(_StrictVideoPayload):
 
 class Grok15VideoGenRequest(_StrictVideoPayload):
     prompt: str
-    model: Literal["grok15"] = "grok15"
+    model: Literal["grok-imagine-1.5"] = "grok-imagine-1.5"
     duration: int = Field(ge=1, le=15)
     resolution: Literal["480p", "720p"] = "480p"
     aspect_ratio: CommonVideoAspectRatio = "16:9"
-    image_url: str
+    image_url: str = Field(min_length=1)
     callback_url: str | None = None
 
 
@@ -419,8 +510,8 @@ class VeoVideoGenRequest(_StrictVideoPayload):
 
 class Seedance2VideoGenRequest(_StrictVideoPayload):
     prompt: str
-    model: Literal["seedance2", "seedance2-mini"] = "seedance2"
-    duration: int = Field(default=5, ge=4, le=15)
+    model: Literal["seedance2", "seedance2-mini", "seedance2.5"] = "seedance2"
+    duration: int = Field(default=5, ge=4, le=30)
     resolution: Seedance2VideoResolution = "720p"
     aspect_ratio: Seedance2VideoAspectRatio = "16:9"
     generate_audio: bool = True
@@ -428,6 +519,10 @@ class Seedance2VideoGenRequest(_StrictVideoPayload):
 
     @model_validator(mode="after")
     def validate_model_resolution(self) -> "Seedance2VideoGenRequest":
+        if self.model != "seedance2.5" and self.duration > 15:
+            raise ValueError(f"{self.model} supports duration from 4 to 15 seconds")
+        if self.model == "seedance2.5" and self.resolution == "4k":
+            raise ValueError("seedance2.5 supports only 480p, 720p, and 1080p")
         if self.model == "seedance2-mini" and self.resolution not in {
             "480p",
             "720p",
@@ -538,8 +633,88 @@ class Wan27VideoGenRequest(_StrictVideoPayload):
         return self
 
 
+def validate_frame_inputs(image: str | None, last_image: str | None) -> None:
+    for value in (image, last_image):
+        if value is not None and not value.startswith(
+            ("http://", "https://", "data:image/")
+        ):
+            raise ValueError("Frame input must be an HTTP(S) URL or image data URI")
+    if last_image and not image:
+        raise ValueError("image_last_url requires image_url")
+
+
+def validate_reference_inputs(images: list[str], videos: list[str]) -> None:
+    for value in images:
+        validate_frame_inputs(value, None)
+    for value in videos:
+        validate_provider_video(value)
+
+
+def validate_provider_video(value: str) -> str:
+    if not value.startswith(
+        ("http://", "https://", "data:video/mp4;", "data:video/quicktime;")
+    ):
+        raise ValueError("Video input must be an HTTP(S) URL or MP4/MOV data URI")
+    return value
+
+
+class Wan30VideoGenRequest(_StrictVideoPayload):
+    prompt: str = Field(min_length=1, max_length=20_000)
+    model: Literal["wan3.0"] = "wan3.0"
+    duration: int = Field(default=5, ge=2, le=30)
+    resolution: Literal["480p", "720p", "1080p"] = "1080p"
+    aspect_ratio: Literal["adaptive", Wan27VideoAspectRatio] = "adaptive"
+    image_url: str | None = None
+    image_last_url: str | None = None
+    reference_image_urls: list[str] = Field(default_factory=list, max_length=10)
+    reference_video_urls: list[str] = Field(default_factory=list, max_length=5)
+    generate_audio: bool = True
+    seed: int = Field(default=-1, ge=-1, le=2_147_483_647)
+    callback_url: str | None = None
+
+    @model_validator(mode="after")
+    def validate_media(self) -> "Wan30VideoGenRequest":
+        validate_frame_inputs(self.image_url, self.image_last_url)
+        validate_reference_inputs(self.reference_image_urls, self.reference_video_urls)
+        if (self.image_url or self.image_last_url) and (
+            self.reference_image_urls or self.reference_video_urls
+        ):
+            raise ValueError("Wan 3.0 frame inputs cannot be combined with references")
+        return self
+
+
+class Flux3VideoGenRequest(_StrictVideoPayload):
+    prompt: str = Field(min_length=1, max_length=5000)
+    model: Literal["flux3"] = "flux3"
+    duration: int = Field(default=5, ge=5, le=20)
+    resolution: Literal["720p", "1080p"] = "720p"
+    aspect_ratio: Flux3VideoAspectRatio = "16:9"
+    image_url: str | None = None
+    image_last_url: str | None = None
+    generate_audio: bool = True
+    callback_url: str | None = None
+
+    @model_validator(mode="after")
+    def validate_frames(self) -> "Flux3VideoGenRequest":
+        validate_frame_inputs(self.image_url, self.image_last_url)
+        return self
+
+
+class Flux3VideoEditPayload(_StrictVideoPayload):
+    """Continue a source video using FLUX.3."""
+
+    prompt: str = Field(min_length=1, max_length=5000)
+    model: Literal["flux3"] = "flux3"
+    duration: int = Field(default=5, ge=5, le=15)
+    resolution: Literal["720p", "1080p"] = "720p"
+    aspect_ratio: Flux3VideoAspectRatio = "16:9"
+    video_url: Annotated[str, AfterValidator(validate_provider_video)]
+    generate_audio: bool = True
+    callback_url: str | None = None
+
+
 VideoGenerateRequest = Annotated[
-    WAN22VideoGenRequest
+    MiniMaxH3VideoGenRequest
     | LTX23VideoGenRequest
     | GrokVideoGenRequest
     | Grok15VideoGenRequest
@@ -549,31 +724,18 @@ VideoGenerateRequest = Annotated[
     | KlingV3VideoGenRequest
     | KlingV3TurboVideoGenRequest
     | KlingV3OmniVideoGenRequest
-    | Wan27VideoGenRequest,
+    | Wan27VideoGenRequest
+    | Wan30VideoGenRequest
+    | Flux3VideoGenRequest,
     Discriminator("model"),
+    BeforeValidator(normalize_grok_model),
 ]
 
 
-class VideoEditPayload(_StrictVideoPayload):
+class VideoEditPayload(Seedance2VideoGenRequest):
     """JSON request body for Seedance ``video_edit`` operations."""
 
-    prompt: str
-    model: Literal["seedance2", "seedance2-mini"] = "seedance2"
-    duration: int = Field(default=5, ge=4, le=15)
-    resolution: Literal["480p", "720p", "1080p", "4k"] = "720p"
-    aspect_ratio: Literal["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"] = "16:9"
-    generate_audio: bool = True
-    callback_url: str | None = None
     content: list[dict[str, Any]] = Field(min_length=1)
-
-    @model_validator(mode="after")
-    def validate_model_resolution(self) -> "VideoEditPayload":
-        if self.model == "seedance2-mini" and self.resolution not in {
-            "480p",
-            "720p",
-        }:
-            raise ValueError("seedance2-mini supports only 480p and 720p")
-        return self
 
     @model_validator(mode="after")
     def validate_content(self) -> "VideoEditPayload":
@@ -626,7 +788,7 @@ class VideoEditPayload(_StrictVideoPayload):
                 "video_edit requires at least one image_url, video_url, "
                 "or audio_url item"
             )
-        if has_audio and not has_visual:
+        if has_audio and not has_visual and self.model != "seedance2.5":
             raise ValueError(
                 "audio_url requires at least one image_url or video_url item"
             )
@@ -735,8 +897,6 @@ class Aleph2Keyframe(BaseModel):
             raise ValueError(
                 "Aleph 2 keyframe image_url must use HTTPS or an image data URI"
             )
-        if self.image_url.startswith("data:") and len(self.image_url) > 5 * 1024 * 1024:
-            raise ValueError("Aleph 2 keyframe data URI exceeds 5 MB")
         if len(self.image_url) > 2048 and not self.image_url.startswith("data:"):
             raise ValueError("Aleph 2 keyframe image_url exceeds 2048 characters")
         if (self.seconds is None) == (self.at is None):
@@ -776,7 +936,8 @@ VideoEditRequest = Annotated[
     VideoEditPayload
     | KlingV3OmniVideoEditPayload
     | Wan27VideoEditPayload
-    | Aleph2VideoEditPayload,
+    | Aleph2VideoEditPayload
+    | Flux3VideoEditPayload,
     Discriminator("model"),
 ]
 
@@ -798,8 +959,9 @@ class ImageUpscalePayload(BaseModel):
         return self
 
 
-VideoUpscaleResolution = Literal["720p", "1080p", "1440p"]
-LipsyncVideoResolution = Literal["360p", "480p"]
+VideoUpscaleResolution = Literal["720p", "1080p", "1440p", "4k"]
+VideoUpscaleModel = Literal["seedvr2", "topaz-prob-4", "topaz-slp-2.5", "topaz-ast-2"]
+LipsyncVideoResolution = Literal["360p", "480p", "720p"]
 LipsyncImageModel = Literal["inftalk", "ltx23"]
 LipsyncImageResolution = Literal["360p", "480p", "720p"]
 
@@ -809,9 +971,11 @@ class VideoUpscalePayload(BaseModel):
 
     video_url: str | None = None
     video_from_task_id: str | None = None
+    model: VideoUpscaleModel = "seedvr2"
+    callback_url: str | None = None
     resolution: VideoUpscaleResolution = Field(
         default="1080p",
-        description="Output resolution; 1440p accepts videos up to 20 seconds.",
+        description="Output resolution; SeedVR2 accepts up to 20 seconds at 1440p.",
     )
 
     @model_validator(mode="after")
@@ -820,6 +984,8 @@ class VideoUpscalePayload(BaseModel):
 
         if bool(self.video_url) == bool(self.video_from_task_id):
             raise ValueError("Provide exactly one of --video or --task-id")
+        if self.model == "seedvr2" and self.resolution == "4k":
+            raise ValueError("seedvr2 video_upscale supports resolution up to 1440p")
         return self
 
 

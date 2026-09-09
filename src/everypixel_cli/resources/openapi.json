@@ -502,6 +502,165 @@
         "title": "FacesResponse",
         "type": "object"
       },
+      "Flux3VideoAspectRatioEnum": {
+        "enum": [
+          "21:9",
+          "2:1",
+          "16:9",
+          "4:3",
+          "1:1",
+          "3:4",
+          "9:16"
+        ],
+        "title": "Flux3VideoAspectRatioEnum",
+        "type": "string"
+      },
+      "Flux3VideoEditRequest": {
+        "description": "FLUX.3 v2v continuation; it extends rather than transforms a source clip.",
+        "properties": {
+          "aspect_ratio": {
+            "$ref": "#/components/schemas/Flux3VideoAspectRatioEnum",
+            "default": "16:9"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "duration": {
+            "default": 5,
+            "maximum": 15.0,
+            "minimum": 5.0,
+            "title": "Duration",
+            "type": "integer"
+          },
+          "generate_audio": {
+            "default": true,
+            "title": "Generate Audio",
+            "type": "boolean"
+          },
+          "model": {
+            "const": "flux3",
+            "default": "flux3",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/Flux3VideoResolutionEnum",
+            "default": "720p"
+          },
+          "video_url": {
+            "title": "Video Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prompt",
+          "video_url"
+        ],
+        "title": "Flux3VideoEditRequest",
+        "type": "object"
+      },
+      "Flux3VideoGenRequest": {
+        "properties": {
+          "aspect_ratio": {
+            "$ref": "#/components/schemas/Flux3VideoAspectRatioEnum",
+            "default": "16:9"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "duration": {
+            "default": 5,
+            "maximum": 20.0,
+            "minimum": 5.0,
+            "title": "Duration",
+            "type": "integer"
+          },
+          "generate_audio": {
+            "default": true,
+            "title": "Generate Audio",
+            "type": "boolean"
+          },
+          "image_last_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Last Url"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "model": {
+            "const": "flux3",
+            "default": "flux3",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/Flux3VideoResolutionEnum",
+            "default": "720p"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "Flux3VideoGenRequest",
+        "type": "object"
+      },
+      "Flux3VideoResolutionEnum": {
+        "enum": [
+          "720p",
+          "1080p"
+        ],
+        "title": "Flux3VideoResolutionEnum",
+        "type": "string"
+      },
       "Grok15VideoGenRequest": {
         "properties": {
           "aspect_ratio": {
@@ -541,8 +700,8 @@
             "title": "Image Url"
           },
           "model": {
-            "const": "grok15",
-            "default": "grok15",
+            "const": "grok-imagine-1.5",
+            "default": "grok-imagine-1.5",
             "title": "Model",
             "type": "string"
           },
@@ -601,8 +760,8 @@
             "title": "Image Url"
           },
           "model": {
-            "const": "grok",
-            "default": "grok",
+            "const": "grok-imagine",
+            "default": "grok-imagine",
             "title": "Model",
             "type": "string"
           },
@@ -785,8 +944,9 @@
           "qwen",
           "wan2.7",
           "wan2.7-pro",
-          "grok",
-          "grok_quality",
+          "grok-imagine",
+          "grok-imagine-2",
+          "grok-imagine-2-low",
           "gemini-3.1-flash",
           "gemini-3-pro",
           "seedream-5-pro",
@@ -868,19 +1028,21 @@
       "ImageGenerateModelEnum": {
         "enum": [
           "zimage",
-          "wan22",
           "wan2.7",
           "wan2.7-pro",
           "flux2",
-          "grok",
-          "grok_quality",
+          "grok-imagine",
+          "grok-imagine-2",
+          "grok-imagine-2-low",
           "gemini-3.1-flash",
           "gemini-3-pro",
           "seedream-5-pro",
           "seedream-5",
           "gpt-image-2-low",
           "gpt-image-2-medium",
-          "gpt-image-2-high"
+          "gpt-image-2-high",
+          "recraftv4_1_vector",
+          "recraftv4_1_pro_vector"
         ],
         "title": "ImageGenerateModelEnum",
         "type": "string"
@@ -993,11 +1155,8 @@
       },
       "ImageStyleEnum": {
         "enum": [
-          "basic",
-          "instagram",
           "portrait",
-          "transparent",
-          "replication"
+          "transparent"
         ],
         "title": "ImageStyleEnum",
         "type": "string"
@@ -1084,6 +1243,33 @@
         "title": "ImageUpscaleModelEnum",
         "type": "string"
       },
+      "ImageVectorizeRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_url": {
+            "title": "Image Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "image_url"
+        ],
+        "title": "ImageVectorizeRequest",
+        "type": "object"
+      },
       "ImgenRequest": {
         "properties": {
           "callback_url": {
@@ -1100,6 +1286,16 @@
             ],
             "title": "Callback Url"
           },
+          "controls": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecraftControls"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "image_size": {
             "$ref": "#/components/schemas/ImageSizeEnum",
             "default": "square"
@@ -1114,11 +1310,6 @@
               }
             ],
             "title": "Image Url"
-          },
-          "ip_scale": {
-            "default": 0.75,
-            "title": "Ip Scale",
-            "type": "number"
           },
           "lora_url": {
             "anyOf": [
@@ -1812,6 +2003,105 @@
         "title": "LipsyncRequest",
         "type": "object"
       },
+      "MiniMaxH3VideoGenRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "aspect_ratio": {
+            "default": "7:4",
+            "enum": [
+              "7:4",
+              "4:7",
+              "1:1"
+            ],
+            "title": "Aspect Ratio",
+            "type": "string"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "duration": {
+            "description": "Requested video duration in seconds (3-15)",
+            "maximum": 15.0,
+            "minimum": 3.0,
+            "title": "Duration",
+            "type": "integer"
+          },
+          "image_last_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Last Url"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "model": {
+            "default": "minimax-h3-turbo",
+            "enum": [
+              "minimax-h3-turbo",
+              "minimax-h3"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "reference_image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1,
+            "title": "Reference Image Urls",
+            "type": "array"
+          },
+          "resolution": {
+            "const": "768p",
+            "default": "768p",
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "maximum": 1.8446744073709552e+19,
+            "minimum": -1.0,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt",
+          "duration"
+        ],
+        "title": "MiniMaxH3VideoGenRequest",
+        "type": "object"
+      },
       "ProviderContentAudioUrl": {
         "properties": {
           "url": {
@@ -1887,6 +2177,76 @@
           "status"
         ],
         "title": "QualityUGCResponse",
+        "type": "object"
+      },
+      "RecraftColor": {
+        "properties": {
+          "rgb": {
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "maximum": 255.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "maximum": 255.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "maximum": 255.0,
+                "minimum": 0.0,
+                "type": "integer"
+              }
+            ],
+            "title": "Rgb",
+            "type": "array"
+          },
+          "weight": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight"
+          }
+        },
+        "required": [
+          "rgb"
+        ],
+        "title": "RecraftColor",
+        "type": "object"
+      },
+      "RecraftControls": {
+        "additionalProperties": false,
+        "properties": {
+          "background_color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecraftColor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "colors": {
+            "items": {
+              "$ref": "#/components/schemas/RecraftColor"
+            },
+            "maxItems": 12,
+            "title": "Colors",
+            "type": "array"
+          }
+        },
+        "title": "RecraftControls",
         "type": "object"
       },
       "Seedance2ContentAudio": {
@@ -2044,8 +2404,8 @@
           },
           "duration": {
             "default": 5,
-            "description": "Video duration in seconds (4-15)",
-            "maximum": 15.0,
+            "description": "Video duration in seconds (4-30)",
+            "maximum": 30.0,
             "minimum": 4.0,
             "title": "Duration",
             "type": "integer"
@@ -2059,7 +2419,8 @@
             "default": "seedance2",
             "enum": [
               "seedance2",
-              "seedance2-mini"
+              "seedance2-mini",
+              "seedance2.5"
             ],
             "title": "Model",
             "type": "string"
@@ -2102,8 +2463,8 @@
           },
           "duration": {
             "default": 5,
-            "description": "Video duration in seconds (4-15)",
-            "maximum": 15.0,
+            "description": "Video duration in seconds (4-30)",
+            "maximum": 30.0,
             "minimum": 4.0,
             "title": "Duration",
             "type": "integer"
@@ -2117,7 +2478,8 @@
             "default": "seedance2",
             "enum": [
               "seedance2",
-              "seedance2-mini"
+              "seedance2-mini",
+              "seedance2.5"
             ],
             "title": "Model",
             "type": "string"
@@ -2210,6 +2572,7 @@
             "type": "integer"
           },
           "text": {
+            "maxLength": 200,
             "title": "Text",
             "type": "string"
           }
@@ -2260,6 +2623,7 @@
             "default": "Auto"
           },
           "text": {
+            "maxLength": 200,
             "title": "Text",
             "type": "string"
           }
@@ -2394,6 +2758,7 @@
             "default": "Auto"
           },
           "text": {
+            "maxLength": 200,
             "title": "Text",
             "type": "string"
           }
@@ -2406,6 +2771,17 @@
       },
       "TaskResponse": {
         "properties": {
+          "queue": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -2729,6 +3105,16 @@
         "title": "VideoSwapStatusResponse",
         "type": "object"
       },
+      "VideoUpscaleModelEnum": {
+        "enum": [
+          "seedvr2",
+          "topaz-prob-4",
+          "topaz-slp-2.5",
+          "topaz-ast-2"
+        ],
+        "title": "VideoUpscaleModelEnum",
+        "type": "string"
+      },
       "VideoUpscaleRequest": {
         "properties": {
           "callback_url": {
@@ -2746,10 +3132,8 @@
             "title": "Callback Url"
           },
           "model": {
-            "const": "seedvr2",
-            "default": "seedvr2",
-            "title": "Model",
-            "type": "string"
+            "$ref": "#/components/schemas/VideoUpscaleModelEnum",
+            "default": "seedvr2"
           },
           "resolution": {
             "$ref": "#/components/schemas/VideoUpscaleResolutionEnum",
@@ -2785,92 +3169,11 @@
         "enum": [
           "720p",
           "1080p",
-          "1440p"
+          "1440p",
+          "4k"
         ],
         "title": "VideoUpscaleResolutionEnum",
         "type": "string"
-      },
-      "WAN22VideoGenRequest": {
-        "properties": {
-          "aspect_ratio": {
-            "$ref": "#/components/schemas/VideoAspectRatioEnum",
-            "default": "16:9"
-          },
-          "callback_url": {
-            "anyOf": [
-              {
-                "format": "uri",
-                "maxLength": 2083,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Callback Url"
-          },
-          "duration": {
-            "description": "Video duration in seconds (1-10)",
-            "maximum": 10.0,
-            "minimum": 1.0,
-            "title": "Duration",
-            "type": "integer"
-          },
-          "lora_high_url": {
-            "anyOf": [
-              {
-                "format": "uri",
-                "maxLength": 2083,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lora High Url"
-          },
-          "lora_low_url": {
-            "anyOf": [
-              {
-                "format": "uri",
-                "maxLength": 2083,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lora Low Url"
-          },
-          "model": {
-            "const": "wan22",
-            "default": "wan22",
-            "title": "Model",
-            "type": "string"
-          },
-          "prompt": {
-            "title": "Prompt",
-            "type": "string"
-          },
-          "resolution": {
-            "$ref": "#/components/schemas/VideoResolutionEnum",
-            "default": "480p"
-          },
-          "seed": {
-            "default": -1,
-            "title": "Seed",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "prompt",
-          "duration"
-        ],
-        "title": "WAN22VideoGenRequest",
-        "type": "object"
       },
       "Wan27VideoAspectRatioEnum": {
         "enum": [
@@ -3056,6 +3359,128 @@
           "1080p"
         ],
         "title": "Wan27VideoResolutionEnum",
+        "type": "string"
+      },
+      "Wan30VideoAspectRatioEnum": {
+        "enum": [
+          "adaptive",
+          "16:9",
+          "9:16",
+          "1:1",
+          "4:3",
+          "3:4"
+        ],
+        "title": "Wan30VideoAspectRatioEnum",
+        "type": "string"
+      },
+      "Wan30VideoGenRequest": {
+        "properties": {
+          "aspect_ratio": {
+            "$ref": "#/components/schemas/Wan30VideoAspectRatioEnum",
+            "default": "adaptive"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "duration": {
+            "default": 5,
+            "description": "Video duration in seconds (2-30)",
+            "maximum": 30.0,
+            "minimum": 2.0,
+            "title": "Duration",
+            "type": "integer"
+          },
+          "generate_audio": {
+            "default": true,
+            "title": "Generate Audio",
+            "type": "boolean"
+          },
+          "image_last_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Last Url"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "model": {
+            "const": "wan3.0",
+            "default": "wan3.0",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "reference_image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Reference Image Urls",
+            "type": "array"
+          },
+          "reference_video_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5,
+            "title": "Reference Video Urls",
+            "type": "array"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/Wan30VideoResolutionEnum",
+            "default": "1080p"
+          },
+          "seed": {
+            "default": -1,
+            "maximum": 2147483647.0,
+            "minimum": -1.0,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "Wan30VideoGenRequest",
+        "type": "object"
+      },
+      "Wan30VideoResolutionEnum": {
+        "enum": [
+          "480p",
+          "720p",
+          "1080p"
+        ],
+        "title": "Wan30VideoResolutionEnum",
         "type": "string"
       }
     }
@@ -3678,6 +4103,47 @@
           }
         },
         "summary": "Upscale",
+        "tags": [
+          "imgen"
+        ]
+      }
+    },
+    "/v1/image_vectorize": {
+      "post": {
+        "operationId": "image_vectorize_v1_image_vectorize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageVectorizeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Image Vectorize",
         "tags": [
           "imgen"
         ]
@@ -4560,9 +5026,11 @@
                 "discriminator": {
                   "mapping": {
                     "aleph2": "#/components/schemas/Aleph2VideoEditRequest",
+                    "flux3": "#/components/schemas/Flux3VideoEditRequest",
                     "kling-3-omni": "#/components/schemas/KlingV3OmniVideoEditRequest",
                     "seedance2": "#/components/schemas/Seedance2VideoEditRequest",
                     "seedance2-mini": "#/components/schemas/Seedance2VideoEditRequest",
+                    "seedance2.5": "#/components/schemas/Seedance2VideoEditRequest",
                     "wan2.7": "#/components/schemas/Wan27VideoEditRequest"
                   },
                   "propertyName": "model"
@@ -4579,6 +5047,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/Aleph2VideoEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Flux3VideoEditRequest"
                   }
                 ],
                 "title": "Data"
@@ -4624,25 +5095,29 @@
               "schema": {
                 "discriminator": {
                   "mapping": {
-                    "grok": "#/components/schemas/GrokVideoGenRequest",
-                    "grok15": "#/components/schemas/Grok15VideoGenRequest",
+                    "flux3": "#/components/schemas/Flux3VideoGenRequest",
+                    "grok-imagine": "#/components/schemas/GrokVideoGenRequest",
+                    "grok-imagine-1.5": "#/components/schemas/Grok15VideoGenRequest",
                     "kling-2.6": "#/components/schemas/KlingV26VideoGenRequest",
                     "kling-3": "#/components/schemas/KlingV3VideoGenRequest",
                     "kling-3-omni": "#/components/schemas/KlingV3OmniVideoGenRequest",
                     "kling-3-turbo": "#/components/schemas/KlingV3TurboVideoGenRequest",
                     "ltx23": "#/components/schemas/LTX23VideoGenRequest",
+                    "minimax-h3": "#/components/schemas/MiniMaxH3VideoGenRequest",
+                    "minimax-h3-turbo": "#/components/schemas/MiniMaxH3VideoGenRequest",
                     "seedance2": "#/components/schemas/Seedance2VideoGenRequest",
                     "seedance2-mini": "#/components/schemas/Seedance2VideoGenRequest",
+                    "seedance2.5": "#/components/schemas/Seedance2VideoGenRequest",
                     "veo-3.1": "#/components/schemas/VeoVideoGenRequest",
                     "veo-3.1-fast": "#/components/schemas/VeoVideoGenRequest",
                     "wan2.7": "#/components/schemas/Wan27VideoGenRequest",
-                    "wan22": "#/components/schemas/WAN22VideoGenRequest"
+                    "wan3.0": "#/components/schemas/Wan30VideoGenRequest"
                   },
                   "propertyName": "model"
                 },
                 "oneOf": [
                   {
-                    "$ref": "#/components/schemas/WAN22VideoGenRequest"
+                    "$ref": "#/components/schemas/MiniMaxH3VideoGenRequest"
                   },
                   {
                     "$ref": "#/components/schemas/LTX23VideoGenRequest"
@@ -4655,6 +5130,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/VeoVideoGenRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Flux3VideoGenRequest"
                   },
                   {
                     "$ref": "#/components/schemas/Seedance2VideoGenRequest"
@@ -4673,6 +5151,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/Wan27VideoGenRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Wan30VideoGenRequest"
                   }
                 ],
                 "title": "Data"

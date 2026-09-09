@@ -24,8 +24,171 @@ def pending_response():
     return httpx.Response(200, json={"task_id": "edit-123", "status": "PENDING"})
 
 
+@pytest.mark.parametrize("model", ["minimax-h3", "flux3", "wan3.0"])
 @respx.mock
-def test_video_generate_seedance2_uses_its_api_contract(monkeypatch):
+def test_new_video_models_first_last_and_generic_parity(model, monkeypatch):
+    route = respx.post("https://api.test/v1/video_generate").mock(
+        return_value=pending_response()
+    )
+    duration = {"minimax-h3": 15, "flux3": 20, "wan3.0": 30}[model]
+    first = str(FIXTURES / "sample.png")
+    audio = [] if model == "minimax-h3" else ["--no-generate-audio"]
+    result = invoke(
+        [
+            "-j",
+            "--no-wait",
+            "video",
+            "first-last",
+            "camera pans left",
+            "--model",
+            model,
+            "--image",
+            first,
+            "--last-image",
+            first,
+            "--duration",
+            str(duration),
+            *audio,
+        ],
+        monkeypatch,
+    )
+    assert result.exit_code == 0, result.output
+    specialized = json.loads(route.calls[0].request.content)
+    assert specialized["image_url"].startswith("data:image/png;base64,")
+    assert specialized["image_last_url"] == specialized["image_url"]
+    assert specialized["duration"] == duration
+    if audio:
+        assert specialized["generate_audio"] is False
+    generic = {
+        **specialized,
+        "image_url": first,
+        "image_last_url": first,
+        "future_field": False,
+    }
+    items = [
+        part
+        for key, value in generic.items()
+        for part in ("--input", f"{key}={json.dumps(value)}")
+    ]
+    result = invoke(
+        ["-j", "--no-wait", "run", "/v1/video_generate", *items], monkeypatch
+    )
+    assert result.exit_code == 0, result.output
+    assert json.loads(route.calls[1].request.content) == {
+        **specialized,
+        "future_field": False,
+    }
+    result = invoke(
+        ["-j", "run", "/v1/video_generate", *items, "--input", "image_url=null"],
+        monkeypatch,
+    )
+    assert result.exit_code == 2
+    assert json.loads(result.stdout)["error"]["code"] == "validation_error"
+    assert result.stderr == ""
+    assert route.call_count == 2
+
+
+@respx.mock
+def test_seedance25_edit_accepts_audio_only(monkeypatch):
+    route = respx.post("https://api.test/v1/video_edit").mock(
+        return_value=pending_response()
+    )
+    args = [
+        "-j",
+        "--no-wait",
+        "video",
+        "edit",
+        "animate to this music",
+        "--audio",
+        str(FIXTURES / "result-2.mp3"),
+        "--duration",
+        "30",
+        "--model",
+    ]
+    result = invoke([*args, "seedance2.5"], monkeypatch)
+    assert result.exit_code == 0, result.output
+    body = json.loads(route.calls[0].request.content)
+    assert body["duration"] == 30
+    assert body["content"][1]["audio_url"]["url"].startswith("data:audio/")
+    result = invoke([*args, "seedance2", "--duration", "15"], monkeypatch)
+    assert result.exit_code == 2
+    assert json.loads(result.stdout)["error"]["code"] == "validation_error"
+    assert route.call_count == 1
+
+
+@respx.mock
+def test_flux3_continuation_and_generic_edit_parity(monkeypatch):
+    route = respx.post("https://api.test/v1/video_edit").mock(
+        return_value=pending_response()
+    )
+    video = str(FIXTURES / "result-1.mp4")
+    result = invoke(
+        [
+            "-j",
+            "--no-wait",
+            "video",
+            "edit",
+            "continue the scene",
+            "--model",
+            "flux3",
+            "--video",
+            video,
+            "--aspect-ratio",
+            "2:1",
+            "--no-generate-audio",
+        ],
+        monkeypatch,
+    )
+    assert result.exit_code == 0, result.output
+    body = json.loads(route.calls[0].request.content)
+    assert body["video_url"].startswith("data:video/mp4;base64,")
+    assert body["generate_audio"] is False
+    assert body["aspect_ratio"] == "2:1"
+    generic = {**body, "video_url": video}
+    items = [
+        part
+        for key, value in generic.items()
+        for part in ("--input", f"{key}={json.dumps(value)}")
+    ]
+    result = invoke(["-j", "--no-wait", "run", "/v1/video_edit", *items], monkeypatch)
+    assert result.exit_code == 0, result.output
+    assert json.loads(route.calls[1].request.content) == body
+
+
+@pytest.mark.parametrize(
+    ("model", "canonical"), [("grok", "grok-imagine"), ("grok15", "grok-imagine-1.5")]
+)
+@respx.mock
+def test_grok_video_aliases(model, canonical, monkeypatch):
+    route = respx.post("https://api.test/v1/video_generate").mock(
+        return_value=pending_response()
+    )
+    result = invoke(
+        [
+            "-j",
+            "--no-wait",
+            "video",
+            "from-image",
+            "camera pans left",
+            "--model",
+            model,
+            "--image",
+            str(FIXTURES / "sample.png"),
+        ],
+        monkeypatch,
+    )
+    assert result.exit_code == 0, result.output
+    assert json.loads(route.calls[0].request.content)["model"] == canonical
+
+
+@pytest.mark.parametrize(
+    ("model", "duration", "resolution"),
+    [("seedance2", 15, "4k"), ("seedance2.5", 30, "1080p")],
+)
+@respx.mock
+def test_video_generate_seedance2_uses_its_api_contract(
+    model, duration, resolution, monkeypatch
+):
     route = respx.post("https://api.test/v1/video_generate").mock(
         return_value=pending_response()
     )
@@ -38,11 +201,11 @@ def test_video_generate_seedance2_uses_its_api_contract(monkeypatch):
             "generate",
             "city at night",
             "--model",
-            "seedance2",
+            model,
             "--duration",
-            "15",
+            str(duration),
             "--resolution",
-            "4k",
+            resolution,
             "--aspect-ratio",
             "21:9",
             "--no-generate-audio",
@@ -53,9 +216,9 @@ def test_video_generate_seedance2_uses_its_api_contract(monkeypatch):
     assert result.exit_code == 0, result.output
     assert json.loads(route.calls[0].request.content) == {
         "prompt": "city at night",
-        "model": "seedance2",
-        "duration": 15,
-        "resolution": "4k",
+        "model": model,
+        "duration": duration,
+        "resolution": resolution,
         "aspect_ratio": "21:9",
         "generate_audio": False,
     }
@@ -91,8 +254,13 @@ def test_video_generate_kling_turbo_uses_provider_defaults(monkeypatch):
     }
 
 
+@pytest.mark.parametrize(
+    ("model", "duration", "ratio"), [("wan2.7", 10, "3:4"), ("wan3.0", 30, "adaptive")]
+)
 @respx.mock
-def test_video_generate_wan_uses_reference_media_contract(monkeypatch):
+def test_video_generate_wan_uses_reference_media_contract(
+    model, duration, ratio, monkeypatch
+):
     route = respx.post("https://api.test/v1/video_generate").mock(
         return_value=pending_response()
     )
@@ -105,13 +273,13 @@ def test_video_generate_wan_uses_reference_media_contract(monkeypatch):
             "generate",
             "consistent motion",
             "--model",
-            "wan2.7",
+            model,
             "--duration",
-            "10",
+            str(duration),
             "--resolution",
             "1080p",
             "--aspect-ratio",
-            "3:4",
+            ratio,
             "--reference-image",
             str(FIXTURES / "sample.png"),
             "--reference-video",
@@ -124,10 +292,10 @@ def test_video_generate_wan_uses_reference_media_contract(monkeypatch):
 
     assert result.exit_code == 0, result.output
     payload = json.loads(route.calls[0].request.content)
-    assert payload["model"] == "wan2.7"
-    assert payload["duration"] == 10
+    assert payload["model"] == model
+    assert payload["duration"] == duration
     assert payload["resolution"] == "1080p"
-    assert payload["aspect_ratio"] == "3:4"
+    assert payload["aspect_ratio"] == ratio
     assert payload["seed"] == 123
     assert payload["reference_image_urls"][0].startswith("data:image/png;base64,")
     assert payload["reference_video_urls"][0].startswith("data:video/mp4;base64,")

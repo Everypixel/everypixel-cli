@@ -25,7 +25,7 @@ def validate_video_generate(**values):
 
 @pytest.mark.parametrize(
     ("model", "style"),
-    [("wan22", "basic"), ("wan22", "instagram"), ("flux2", "transparent")],
+    [("zimage", "portrait"), ("flux2", "transparent")],
 )
 def test_image_generate_keeps_styles_for_supported_models(model, style):
     assert ImageGeneratePayload(prompt="x", model=model, style=style).style == style
@@ -84,17 +84,17 @@ def test_new_image_models_apply_provider_constraints():
         )
 
 
-def test_wan22_rejects_720p():
+def test_retired_wan22_is_rejected():
     with pytest.raises(ValidationError):
         validate_video_generate(
-            prompt="x", model="wan22", duration=5, resolution="720p"
+            prompt="x", model="wan22", duration=5, resolution="480p"
         )
 
 
 @pytest.mark.parametrize(
     ("model", "resolution", "aspect_ratio"),
     [
-        ("wan22", "1080p", "16:9"),
+        ("minimax-h3", "1080p", "7:4"),
         ("ltx23", "4k", "16:9"),
         ("ltx23", "720p", "21:9"),
         ("grok", "360p", "16:9"),
@@ -116,10 +116,8 @@ def test_video_models_reject_other_provider_values(model, resolution, aspect_rat
 
 
 def test_video_models_apply_provider_defaults_and_fields():
-    wan22 = validate_video_generate(prompt="x", model="wan22", duration=5)
     ltx23 = validate_video_generate(prompt="x", model="ltx23", duration=5)
 
-    assert wan22.model_dump(exclude_none=True)["resolution"] == "480p"
     assert ltx23.model_dump(exclude_none=True)["resolution"] == "720p"
     assert "generate_audio" not in ltx23.model_dump(exclude_none=True)
 
@@ -127,7 +125,7 @@ def test_video_models_apply_provider_defaults_and_fields():
 @pytest.mark.parametrize(
     ("model", "field", "value"),
     [
-        ("wan22", "image_url", "https://img.test/source.png"),
+        ("minimax-h3", "generate_audio", False),
         ("seedance2", "image_url", "https://img.test/source.png"),
         ("grok", "image_last_url", "https://img.test/last.png"),
         ("ltx23", "lora_high_url", "https://cdn.test/lora.safetensors"),
@@ -159,12 +157,12 @@ def test_video_upscale_requires_exactly_one_source_and_valid_resolution():
         VideoUpscalePayload(video_from_task_id="abc", resolution="480p")
 
 
-def test_lipsync_video_rejects_720p():
+def test_lipsync_video_rejects_1080p():
     with pytest.raises(ValidationError):
         LipsyncVideoPayload(
             video_url="https://cdn.test/in.mp4",
             audio_url="https://cdn.test/voice.mp3",
-            resolution="720p",
+            resolution="1080p",
         )
 
 

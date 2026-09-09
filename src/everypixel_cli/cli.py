@@ -578,6 +578,11 @@ def image_generate(
     size: Annotated[str, typer.Option("--size")] = "square",
     style: Annotated[Optional[str], typer.Option("--style")] = None,
     image: Annotated[Optional[str], typer.Option("--image")] = None,
+    lora_url: Annotated[Optional[str], typer.Option("--lora-url")] = None,
+    controls: Annotated[
+        Optional[str],
+        typer.Option("--controls", help="Recraft palette controls as JSON."),
+    ] = None,
     resolution: Annotated[Optional[str], typer.Option("--resolution")] = None,
     seed: Annotated[int, typer.Option("--seed")] = -1,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
@@ -603,6 +608,8 @@ def image_generate(
             image_size=size,
             style=style,
             image=image,
+            lora_url=lora_url,
+            controls=controls,
             resolution=resolution,
             seed=seed,
             callback_url=callback_url,
@@ -622,6 +629,7 @@ def image_edit(
     model: Annotated[str, typer.Option("--model")] = "flux2",
     size: Annotated[Optional[str], typer.Option("--size")] = None,
     resolution: Annotated[Optional[str], typer.Option("--resolution")] = None,
+    megapixel_ratio: Annotated[float, typer.Option("--megapixel-ratio")] = 1.0,
     seed: Annotated[int, typer.Option("--seed")] = -1,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
     wait_option: WaitOption = None,
@@ -646,7 +654,37 @@ def image_edit(
             model=model,
             image_size=size,
             resolution=resolution,
+            megapixel_ratio=megapixel_ratio,
             seed=seed,
+            callback_url=callback_url,
+            execution=runtime.execution_options(),
+        ),
+    )
+
+
+@image_app.command("vectorize")
+def image_vectorize(
+    ctx: typer.Context,
+    image: Annotated[str, typer.Argument(help="Image URL or local path.")],
+    callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
+    wait_option: WaitOption = None,
+    download: DownloadOption = None,
+    output_json: OutputJsonOption = False,
+    jq_expr: JqOption = None,
+) -> None:
+    """Convert an image to SVG."""
+
+    runtime = apply_common_options(
+        ctx,
+        wait_option=wait_option,
+        download=download,
+        output_json=output_json,
+        jq_expr=jq_expr,
+    )
+    run_action(
+        ctx,
+        lambda: runtime.services().execute_image_vectorize(
+            image=image,
             callback_url=callback_url,
             execution=runtime.execution_options(),
         ),
@@ -757,14 +795,12 @@ def video_generate(
     model: str = "ltx23",
     duration: Optional[int] = None,
     resolution: Optional[str] = None,
-    aspect_ratio: Annotated[str, typer.Option("--aspect-ratio")] = "16:9",
-    lora_high_url: Annotated[Optional[str], typer.Option("--lora-high-url")] = None,
-    lora_low_url: Annotated[Optional[str], typer.Option("--lora-low-url")] = None,
+    aspect_ratio: Annotated[Optional[str], typer.Option("--aspect-ratio")] = None,
     reference_image: Annotated[
         list[str],
         typer.Option(
             "--reference-image",
-            help="Wan or Veo reference image URL/local path. Can be repeated.",
+            help="MiniMax, Wan or Veo reference image URL/local path. Can be repeated.",
         ),
     ] = [],
     reference_video: Annotated[
@@ -801,8 +837,6 @@ def video_generate(
             duration=duration,
             resolution=resolution,
             aspect_ratio=aspect_ratio,
-            lora_high_url=lora_high_url,
-            lora_low_url=lora_low_url,
             reference_images=reference_image,
             reference_videos=reference_video,
             seed=seed,
@@ -895,8 +929,11 @@ def video_from_image(
     model: str = "ltx23",
     duration: Optional[int] = None,
     resolution: Optional[str] = None,
-    aspect_ratio: Annotated[str, typer.Option("--aspect-ratio")] = "16:9",
+    aspect_ratio: Annotated[Optional[str], typer.Option("--aspect-ratio")] = None,
     seed: Optional[int] = None,
+    generate_audio: Annotated[
+        Optional[bool], typer.Option("--generate-audio/--no-generate-audio")
+    ] = None,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
@@ -922,6 +959,7 @@ def video_from_image(
             aspect_ratio=aspect_ratio,
             image=image,
             seed=seed,
+            generate_audio=generate_audio,
             callback_url=callback_url,
             execution=runtime.execution_options(),
         ),
@@ -937,8 +975,11 @@ def video_first_last(
     model: str = "ltx23",
     duration: Optional[int] = None,
     resolution: Optional[str] = None,
-    aspect_ratio: Annotated[str, typer.Option("--aspect-ratio")] = "16:9",
+    aspect_ratio: Annotated[Optional[str], typer.Option("--aspect-ratio")] = None,
     seed: Optional[int] = None,
+    generate_audio: Annotated[
+        Optional[bool], typer.Option("--generate-audio/--no-generate-audio")
+    ] = None,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
@@ -965,6 +1006,7 @@ def video_first_last(
             image=image,
             last_image=last_image,
             seed=seed,
+            generate_audio=generate_audio,
             callback_url=callback_url,
             execution=runtime.execution_options(),
         ),
@@ -976,11 +1018,15 @@ def video_upscale(
     ctx: typer.Context,
     video: Annotated[Optional[str], typer.Option("--video")] = None,
     task_id: Annotated[Optional[str], typer.Option("--task-id")] = None,
+    model: str = "seedvr2",
+    callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
     resolution: Annotated[
         str,
         typer.Option(
             "--resolution",
-            help="Output resolution: 720p, 1080p, or 1440p (up to 20s at 1440p).",
+            help=(
+                "720p, 1080p, 1440p, or 4k (Topaz only). SeedVR2: up to 20s at 1440p."
+            ),
         ),
     ] = "1080p",
     wait_option: WaitOption = None,
@@ -990,7 +1036,7 @@ def video_upscale(
 ) -> None:
     """Start video upscale from a URL/file or task_id.
 
-    Source videos longer than 20 seconds cannot be upscaled to 1440p.
+    SeedVR2 source videos longer than 20 seconds cannot be upscaled to 1440p.
     """
 
     runtime = apply_common_options(
@@ -1006,6 +1052,8 @@ def video_upscale(
             video=video,
             task_id=task_id,
             resolution=resolution,
+            model=model,
+            callback_url=callback_url,
             execution=runtime.execution_options(),
         ),
     )

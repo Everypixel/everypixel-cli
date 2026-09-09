@@ -110,6 +110,7 @@ CLI falls back to its user configuration file when a keyring is unavailable;
 | --- | --- |
 | `everypixel image generate PROMPT` | Generate an image from a text prompt |
 | `everypixel image edit PROMPT --image FILE` | Edit one or more images |
+| `everypixel image vectorize FILE` | Convert an image to SVG |
 | `everypixel image upscale` | Upscale an image, URL, or existing task result |
 | `everypixel image angles --image FILE` | Change the camera angle of an image |
 | `everypixel image colors --image FILE --reference FILE` | Transfer colors from a reference image |
@@ -125,6 +126,13 @@ everypixel image edit \
 
 everypixel image upscale --image ./input.png --download ./outputs
 
+everypixel image generate "a mountain icon" \
+  --model recraftv4_1_vector \
+  --controls '{"colors":[{"rgb":[20,100,180],"weight":1}]}' \
+  --download ./outputs
+
+everypixel image vectorize ./input.png --download ./outputs
+
 everypixel image angles \
   --image ./input.png \
   --azimuth right \
@@ -132,6 +140,16 @@ everypixel image angles \
   --distance medium \
   --download ./outputs
 ```
+
+Recraft V4.1 vector models (`recraftv4_1_vector`, `recraftv4_1_pro_vector`)
+produce SVG files and accept optional JSON palette `--controls`. Use `--size`
+to select their aspect ratio. Raster models also accept `--resolution`.
+
+`--lora-url` is supported only by `zimage`.
+
+Grok image models are `grok-imagine`, `grok-imagine-2`, and
+`grok-imagine-2-low`. The `grok` alias remains supported. `grok_quality` and
+`wan22` have been removed from the API.
 
 ### Video
 
@@ -163,7 +181,35 @@ everypixel video edit \
   "make the scene cinematic" \
   --video ./input.mp4 \
   --download ./outputs
+
+everypixel video generate "a slow aerial shot over mountain lakes" \
+  --model minimax-h3-turbo --duration 10 --download ./outputs
+
+everypixel video edit "continue the scene with a slow camera pan" \
+  --model flux3 --video ./input.mp4 --download ./outputs
+
+everypixel video upscale --video ./input.mp4 \
+  --model topaz-prob-4 --resolution 4k --download ./outputs
 ```
+
+New video models use these provider defaults and limits:
+
+| Model | Duration | Default resolution / aspect ratio | Inputs |
+| --- | --- | --- | --- |
+| `minimax-h3-turbo`, `minimax-h3` | 3–15 s | 768p / 7:4 | Text, first/last frames, or one `--reference-image` |
+| `wan3.0` | 2–30 s | 1080p / adaptive | Text, frames, or up to 10 reference images and 5 reference videos |
+| `flux3` | 5–20 s generation; 5–15 s continuation | 720p / 16:9 | Text, frames, or `video edit --video` for continuation |
+| `seedance2.5` | 4–30 s | 720p / 16:9 | Text or `video edit` references, including audio alone |
+
+MiniMax reference images cannot be combined with first/last frames. WAN 3.0
+also separates frame and reference inputs. Seedance 2.5 supports up to 1080p;
+Seedance 2 and Mini retain their 15-second limit. Grok video model names are
+`grok-imagine` and `grok-imagine-1.5` (image required); `grok` and `grok15`
+remain accepted aliases. The CLI's default video model remains `ltx23`.
+
+Topaz upscaling models are `topaz-prob-4`, `topaz-slp-2.5`, and `topaz-ast-2`.
+They support 4K output. The default `seedvr2` supports up to 1440p, with a
+20-second source limit at 1440p.
 
 ### Lipsync and Audio
 
@@ -175,6 +221,8 @@ everypixel video edit \
 | `everypixel audio tts-create` | Create speech with a built-in speaker |
 | `everypixel audio tts-clone` | Create speech from a cloned voice sample |
 | `everypixel audio tts-voice` | Create speech with a character voice |
+
+Lipsync supports 720p; the API checks source media dimensions and duration.
 
 Examples:
 
