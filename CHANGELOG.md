@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.2.1] - 2026-09-11
+
+- Support up to 9 image, 3 video, and 3 audio references for MiniMax H3/Turbo.
+
 ## [0.2.0] - 2026-09-09
 
 - Add MiniMax H3/Turbo, WAN 3.0, Flux 3, and Seedance 2.5 video models.

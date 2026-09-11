@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import threading
 import time
 from pathlib import Path
@@ -8,11 +9,13 @@ from typing import Any
 
 import anyio
 import pytest
+import respx
 from mcp import Client
 from typer.testing import CliRunner
 
 from everypixel_cli.application import ApplicationServices, OperationResult
 from everypixel_cli.cli import app
+from everypixel_cli.client import APIClient
 from everypixel_cli.mcp_server import create_mcp_server
 
 
@@ -156,6 +159,40 @@ def test_mcp_tool_delegates_to_application_services_and_serializes_result() -> N
     assert arguments["execution"].download_directory == Path("/tmp/everypixel-output")
     assert arguments["execution"].timeout == 12
     assert arguments["execution"].poll_interval == 0.25
+
+
+@respx.mock
+def test_mcp_minimax_accepts_audio_references_without_images() -> None:
+    route = respx.post("https://api.test/v1/video_generate").respond(
+        200, json={"task_id": "task-1", "status": "PENDING"}
+    )
+    services = ApplicationServices.with_client(
+        APIClient(base_url="https://api.test", client_id="id", client_secret="secret")
+    )
+    audio = str(Path(__file__).parent / "fixtures" / "result-2.mp3")
+
+    async def call_tool():
+        server = create_mcp_server(lambda: services)
+        async with Client(server) as client:
+            return await client.call_tool(
+                "video_generate",
+                {
+                    "prompt": "animate to this music",
+                    "model": "minimax-h3-turbo",
+                    "reference_audios": [audio],
+                    "execution": {"wait": False},
+                },
+            )
+
+    try:
+        result = asyncio.run(call_tool())
+    finally:
+        services.close()
+    assert result.is_error is False
+    payload = json.loads(route.calls[0].request.content)
+    assert payload["reference_audio_urls"][0].startswith("data:audio/")
+    assert payload["reference_image_urls"] == []
+    assert payload["reference_video_urls"] == []
 
 
 def test_mcp_tool_returns_sanitized_structured_error() -> None:

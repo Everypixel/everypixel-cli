@@ -83,9 +83,10 @@ def test_run_rejects_invalid_input_item_as_json_error():
     assert payload["error"]["message"] == "Invalid input item"
 
 
-def test_video_upscale_help_documents_1440p_duration_limit():
+def test_video_upscale_help_documents_seedvr2_duration_limits():
     result = runner.invoke(app, ["video", "upscale", "--help"])
 
     assert result.exit_code == 0
     assert "1440p" in result.stdout
-    assert "up to 20s at 1440p" in result.stdout
+    assert "20s at 1080p" in result.stdout
+    assert "10s at 1440p" in result.stdout

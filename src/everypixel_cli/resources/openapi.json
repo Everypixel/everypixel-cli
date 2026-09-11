@@ -2073,12 +2073,28 @@
             "title": "Prompt",
             "type": "string"
           },
+          "reference_audio_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Reference Audio Urls",
+            "type": "array"
+          },
           "reference_image_urls": {
             "items": {
               "type": "string"
             },
-            "maxItems": 1,
+            "maxItems": 9,
             "title": "Reference Image Urls",
+            "type": "array"
+          },
+          "reference_video_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Reference Video Urls",
             "type": "array"
           },
           "resolution": {
@@ -4847,6 +4863,62 @@
           }
         },
         "summary": "Get Status",
+        "tags": [
+          "imgen"
+        ]
+      }
+    },
+    "/v1/tasks/{task_id}": {
+      "delete": {
+        "description": "Cancel an owned task while cancellation is still available. Repeated cancellation is idempotent.",
+        "operationId": "delete_task_v1_tasks__task_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImgenStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Task not found for this client"
+          },
+          "409": {
+            "description": "Task cannot be cancelled in its current state"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Cancellation temporarily unavailable; retry the request"
+          }
+        },
+        "summary": "Cancel a queued task",
         "tags": [
           "imgen"
         ]

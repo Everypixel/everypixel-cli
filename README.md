@@ -196,20 +196,22 @@ New video models use these provider defaults and limits:
 
 | Model | Duration | Default resolution / aspect ratio | Inputs |
 | --- | --- | --- | --- |
-| `minimax-h3-turbo`, `minimax-h3` | 3–15 s | 768p / 7:4 | Text, first/last frames, or one `--reference-image` |
+| `minimax-h3-turbo`, `minimax-h3` | 3–15 s | 768p / 7:4 | Text, first/last frames, or up to 9 image, 3 video, and 3 audio references |
 | `wan3.0` | 2–30 s | 1080p / adaptive | Text, frames, or up to 10 reference images and 5 reference videos |
 | `flux3` | 5–20 s generation; 5–15 s continuation | 720p / 16:9 | Text, frames, or `video edit --video` for continuation |
 | `seedance2.5` | 4–30 s | 720p / 16:9 | Text or `video edit` references, including audio alone |
 
-MiniMax reference images cannot be combined with first/last frames. WAN 3.0
-also separates frame and reference inputs. Seedance 2.5 supports up to 1080p;
+Use repeatable `--reference-image`, `--reference-video`, and `--reference-audio`
+options for MiniMax references. References cannot be combined with first/last
+frames. WAN 3.0 also separates frame and reference inputs. Seedance 2.5 supports
+up to 1080p;
 Seedance 2 and Mini retain their 15-second limit. Grok video model names are
 `grok-imagine` and `grok-imagine-1.5` (image required); `grok` and `grok15`
 remain accepted aliases. The CLI's default video model remains `ltx23`.
 
 Topaz upscaling models are `topaz-prob-4`, `topaz-slp-2.5`, and `topaz-ast-2`.
 They support 4K output. The default `seedvr2` supports up to 1440p, with a
-20-second source limit at 1440p.
+20-second source limit at 1080p and a 10-second limit at 1440p, inclusive.
 
 ### Lipsync and Audio
 

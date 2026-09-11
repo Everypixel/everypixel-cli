@@ -807,7 +807,14 @@ def video_generate(
         list[str],
         typer.Option(
             "--reference-video",
-            help="Wan reference video URL or local path. Can be repeated.",
+            help="MiniMax or Wan reference video URL or local path. Can be repeated.",
+        ),
+    ] = [],
+    reference_audio: Annotated[
+        list[str],
+        typer.Option(
+            "--reference-audio",
+            help="MiniMax reference audio URL or local path. Can be repeated.",
         ),
     ] = [],
     seed: Optional[int] = None,
@@ -839,6 +846,7 @@ def video_generate(
             aspect_ratio=aspect_ratio,
             reference_images=reference_image,
             reference_videos=reference_video,
+            reference_audios=reference_audio,
             seed=seed,
             generate_audio=generate_audio,
             callback_url=callback_url,
@@ -1025,7 +1033,8 @@ def video_upscale(
         typer.Option(
             "--resolution",
             help=(
-                "720p, 1080p, 1440p, or 4k (Topaz only). SeedVR2: up to 20s at 1440p."
+                "720p, 1080p, 1440p, or 4k (Topaz only). "
+                "SeedVR2: up to 20s at 1080p, 10s at 1440p."
             ),
         ),
     ] = "1080p",
@@ -1036,7 +1045,8 @@ def video_upscale(
 ) -> None:
     """Start video upscale from a URL/file or task_id.
 
-    SeedVR2 source videos longer than 20 seconds cannot be upscaled to 1440p.
+    SeedVR2 accepts source videos up to 20 seconds at 1080p or 10 seconds at
+    1440p, inclusive.
     """
 
     runtime = apply_common_options(

@@ -225,6 +225,7 @@ class VideoGenerateInput(MCPToolInput):
     aspect_ratio: VideoGenerateAspectRatio | None = None
     reference_images: list[str] | None = None
     reference_videos: list[str] | None = None
+    reference_audios: list[str] | None = None
     image: str | None = None
     last_image: str | None = None
     seed: int | None = None
@@ -576,6 +577,7 @@ def create_mcp_server(
             aspect_ratio=arguments.aspect_ratio,
             reference_images=arguments.reference_images,
             reference_videos=arguments.reference_videos,
+            reference_audios=arguments.reference_audios,
             image=arguments.image,
             last_image=arguments.last_image,
             seed=arguments.seed,

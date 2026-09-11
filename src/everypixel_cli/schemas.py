@@ -6,6 +6,7 @@ media sources, model limits, enum values, and numeric ranges.
 
 from __future__ import annotations
 
+import re
 from typing import Annotated, Any, Literal
 
 from pydantic import (
@@ -424,7 +425,9 @@ class MiniMaxH3VideoGenRequest(_StrictVideoPayload):
     seed: int = Field(default=-1, ge=-1, le=18_446_744_073_709_551_615)
     image_url: str | None = None
     image_last_url: str | None = None
-    reference_image_urls: list[str] = Field(default_factory=list, max_length=1)
+    reference_image_urls: list[str] = Field(default_factory=list, max_length=9)
+    reference_video_urls: list[str] = Field(default_factory=list, max_length=3)
+    reference_audio_urls: list[str] = Field(default_factory=list, max_length=3)
     callback_url: str | None = None
 
     @model_validator(mode="after")
@@ -433,8 +436,29 @@ class MiniMaxH3VideoGenRequest(_StrictVideoPayload):
             raise ValueError("prompt must not be blank")
         validate_frame_inputs(self.image_url, self.image_last_url)
         validate_reference_inputs(self.reference_image_urls, [])
-        if self.reference_image_urls and (self.image_url or self.image_last_url):
-            raise ValueError("Frame images and reference_image_urls cannot be combined")
+        for media_type, values in (
+            ("video", self.reference_video_urls),
+            ("audio", self.reference_audio_urls),
+        ):
+            for value in values:
+                if value.startswith("data:"):
+                    if not re.fullmatch(
+                        rf"data:{media_type}/[a-zA-Z0-9.+\-]+;base64,[A-Za-z0-9+/]+=*",
+                        value,
+                    ):
+                        raise ValueError(
+                            f"reference_{media_type}_urls requires {media_type} "
+                            "base64 data URIs"
+                        )
+                else:
+                    HttpUrl(value)
+        references = (
+            self.reference_image_urls
+            or self.reference_video_urls
+            or self.reference_audio_urls
+        )
+        if references and (self.image_url or self.image_last_url):
+            raise ValueError("Frame images and reference media cannot be combined")
         return self
 
 
@@ -975,7 +999,10 @@ class VideoUpscalePayload(BaseModel):
     callback_url: str | None = None
     resolution: VideoUpscaleResolution = Field(
         default="1080p",
-        description="Output resolution; SeedVR2 accepts up to 20 seconds at 1440p.",
+        description=(
+            "Output resolution; SeedVR2 source limits: "
+            "20s at 1080p, 10s at 1440p, inclusive."
+        ),
     )
 
     @model_validator(mode="after")

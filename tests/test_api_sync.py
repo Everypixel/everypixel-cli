@@ -79,6 +79,11 @@ def test_bundled_openapi_has_current_video_edit_contract():
     assert edit_schema["discriminator"]["mapping"]["flux3"] == (
         "#/components/schemas/Flux3VideoEditRequest"
     )
+    minimax = schema["components"]["schemas"]["MiniMaxH3VideoGenRequest"]
+    for media_type, limit in (("image", 9), ("video", 3), ("audio", 3)):
+        assert (
+            minimax["properties"][f"reference_{media_type}_urls"]["maxItems"] == limit
+        )
 
 
 def test_bundled_openapi_has_current_image_enums_and_quality_ugc():
@@ -144,6 +149,9 @@ def test_bundled_openapi_has_current_dev_endpoints_and_content_refs():
 
     assert "/v1/auth/check" in schema["paths"]
     assert "/v1/image_remove_background" in schema["paths"]
+    assert schema["paths"]["/v1/tasks/{task_id}"]["delete"]["operationId"] == (
+        "delete_task_v1_tasks__task_id__delete"
+    )
     assert "AuthCheckResponse" in components
     assert "ImageRemoveBackgroundRequest" in components
     assert "ProviderContentAudioUrl" in components

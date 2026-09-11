@@ -8,6 +8,7 @@ from typer.testing import CliRunner
 from everypixel_cli.cli import app
 from everypixel_cli.client import APIClient
 from everypixel_cli.errors import CLIError
+from everypixel_cli.openapi import bundled_schema
 
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -238,6 +239,15 @@ def test_tts_sends_full_text_without_local_limit(
         ["video", "generate", "x", "--model", "minimax-h3", "--duration", "2"],
         ["video", "generate", " ", "--model", "minimax-h3"],
         ["video", "generate", "x", "--model", "minimax-h3", "--no-generate-audio"],
+        [
+            "video",
+            "generate",
+            "x",
+            "--model",
+            "wan3.0",
+            "--reference-audio",
+            "https://cdn.test/reference.mp3",
+        ],
         ["video", "generate", "x", "--model", "seedance2", "--duration", "30"],
         ["video", "generate", "x", "--model", "seedance2.5", "--resolution", "4k"],
         ["video", "generate", "x", "--model", "grok15"],
@@ -1237,6 +1247,26 @@ def test_video_generate_payload(monkeypatch):
 @respx.mock
 def test_video_generate_minimax_reference_payload(model, monkeypatch):
     route = mock_async_post("/v1/video_generate")
+    references = {
+        "image": [str(FIXTURES / "sample.png")]
+        + [f"https://img.test/reference-{index}.png" for index in range(8)],
+        "video": [
+            str(FIXTURES / "result-1.mp4"),
+            "https://cdn.test/reference.mp4",
+            "data:video/webm;base64,dmlkZW8=",
+        ],
+        "audio": [
+            str(FIXTURES / "result-2.mp3"),
+            "https://cdn.test/reference.mp3",
+            "data:audio/wav;base64,YXVkaW8=",
+        ],
+    }
+    options = [
+        part
+        for media_type, values in references.items()
+        for value in values
+        for part in (f"--reference-{media_type}", value)
+    ]
 
     invoke_json(
         [
@@ -1245,8 +1275,7 @@ def test_video_generate_minimax_reference_payload(model, monkeypatch):
             "product shot",
             "--model",
             model,
-            "--reference-image",
-            str(FIXTURES / "sample.png"),
+            *options,
             "--seed",
             "18446744073709551615",
             "--callback-url",
@@ -1261,8 +1290,75 @@ def test_video_generate_minimax_reference_payload(model, monkeypatch):
     assert body["resolution"] == "768p"
     assert body["aspect_ratio"] == "7:4"
     assert body["seed"] == 18446744073709551615
-    assert body["reference_image_urls"][0].startswith("data:image/png;base64,")
+    for media_type, values in references.items():
+        encoded = body[f"reference_{media_type}_urls"]
+        assert len(encoded) == len(values)
+        assert encoded[0].startswith(f"data:{media_type}/")
+        assert encoded[1:] == values[1:]
     assert body["callback_url"] == "https://hooks.test/callback"
+
+    respx.get("https://api.test/v1/openapi.json").respond(200, json=bundled_schema())
+    generic = {
+        **body,
+        **{f"reference_{kind}_urls": values for kind, values in references.items()},
+    }
+    items = [
+        part
+        for key, value in generic.items()
+        for part in ("--input", f"{key}={json.dumps(value)}")
+    ]
+    for endpoint in ("video_generate", "/v1/video_generate"):
+        invoke_json(["run", endpoint, *items], monkeypatch)
+        assert json.loads(route.calls[-1].request.content) == body
+
+
+@pytest.mark.parametrize(
+    "references",
+    [
+        {"reference_image_urls": ["https://img.test/reference.png"] * 10},
+        {"reference_video_urls": ["https://cdn.test/reference.mp4"] * 4},
+        {"reference_audio_urls": ["https://cdn.test/reference.mp3"] * 4},
+        {
+            "image_url": "https://img.test/first.png",
+            "reference_video_urls": ["https://cdn.test/reference.mp4"],
+        },
+        {
+            "image_url": "https://img.test/first.png",
+            "reference_audio_urls": ["https://cdn.test/reference.mp3"],
+        },
+        {"reference_video_urls": ["data:audio/wav;base64,YXVkaW8="]},
+        {"reference_audio_urls": ["data:video/mp4;base64,dmlkZW8="]},
+    ],
+)
+@respx.mock
+def test_minimax_rejects_invalid_references_before_http(references):
+    payload = {
+        "model": "minimax-h3",
+        "prompt": "product shot",
+        "duration": 5,
+        **references,
+    }
+    items = [
+        part
+        for key, value in payload.items()
+        for part in ("--input", f"{key}={json.dumps(value)}")
+    ]
+    result = runner.invoke(
+        app,
+        [
+            "--base-url",
+            "https://api.test",
+            "-j",
+            "--no-wait",
+            "run",
+            "/v1/video_generate",
+            *items,
+        ],
+    )
+    assert result.exit_code == 2
+    assert json.loads(result.stdout)["error"]["code"] == "validation_error"
+    assert result.stderr == ""
+    assert not respx.calls
 
 
 @respx.mock

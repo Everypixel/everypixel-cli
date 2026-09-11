@@ -651,6 +651,7 @@ def build_video_generate_payload(**values: Any) -> dict[str, Any]:
     last_image = values.pop("last_image", None)
     reference_images = values.pop("reference_images", [])
     reference_videos = values.pop("reference_videos", [])
+    reference_audios = values.pop("reference_audios", [])
     values = normalize_grok_model(values)
     if values.get("duration") is None:
         model = values.get("model")
@@ -676,6 +677,10 @@ def build_video_generate_payload(**values: Any) -> dict[str, Any]:
     if reference_videos:
         payload["reference_video_urls"] = [
             media_value(value) for value in reference_videos
+        ]
+    if reference_audios:
+        payload["reference_audio_urls"] = [
+            media_value(value) for value in reference_audios
         ]
     validated = _VIDEO_GENERATE_ADAPTER.validate_python(
         {key: value for key, value in payload.items() if value is not None}
@@ -971,6 +976,7 @@ class ApplicationServices:
         aspect_ratio: str | None,
         reference_images: list[str] | None = None,
         reference_videos: list[str] | None = None,
+        reference_audios: list[str] | None = None,
         image: str | None = None,
         last_image: str | None = None,
         seed: int | None = None,
@@ -986,6 +992,7 @@ class ApplicationServices:
             aspect_ratio=aspect_ratio,
             reference_images=reference_images or [],
             reference_videos=reference_videos or [],
+            reference_audios=reference_audios or [],
             image=image,
             last_image=last_image,
             seed=seed,
@@ -1427,7 +1434,7 @@ def normalize_video_edit_content(payload: dict[str, Any]) -> None:
         value = payload.get(key)
         if isinstance(value, str):
             payload[key] = media_value(value)
-    for key in ("reference_image_urls", "reference_video_urls"):
+    for key in ("reference_image_urls", "reference_video_urls", "reference_audio_urls"):
         values = payload.get(key)
         if isinstance(values, list):
             payload[key] = [
