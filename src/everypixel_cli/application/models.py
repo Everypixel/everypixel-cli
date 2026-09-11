@@ -18,7 +18,7 @@ class ExecutionOptions:
 
     wait: bool = False
     download_directory: Path | None = None
-    timeout: float = 300.0
+    timeout: float = 1800.0
     poll_interval: float = 2.0
     cancel_event: Event | None = field(
         default=None,

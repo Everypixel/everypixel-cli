@@ -267,7 +267,7 @@ def main(
             callback=positive_float,
             help="Task wait timeout in seconds.",
         ),
-    ] = 300.0,
+    ] = 1800.0,
     poll_interval: Annotated[
         float,
         typer.Option(

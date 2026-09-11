@@ -365,7 +365,7 @@ Global options must appear before the command they apply to.
 | `--output-json`, `-j` | Shortcut for JSON output |
 | `--jq EXPRESSION` | Filter JSON output |
 | `--wait`, `--no-wait` | Control async task polling |
-| `--timeout SECONDS` | Set the polling timeout |
+| `--timeout SECONDS` | Set the polling timeout (default: 30 minutes) |
 | `--poll-interval SECONDS` | Set the delay between status requests |
 | `--download DIRECTORY`, `-d DIRECTORY` | Download completed result files |
 | `--no-color` | Disable colored terminal output |
@@ -456,7 +456,7 @@ everypixel --show-completion
 - Authentication failure: run `everypixel auth check`, then configure the
   credentials again if needed.
 - Wait timeout: increase the global timeout, for example
-  `everypixel --timeout 600 wait TASK_ID`.
+  `everypixel --timeout 7200 wait TASK_ID`.
 - Invalid media: pass an existing local file, an HTTP(S) URL, or a supported
   data URI.
 - File not found: use an absolute path or run the command from the directory

@@ -99,7 +99,7 @@ class MCPExecutionOptions(BaseModel):
         description="Local directory for completed result files; implies waiting.",
     )
     timeout: float = Field(
-        default=300.0,
+        default=1800.0,
         gt=0,
         description="Maximum task wait time in seconds.",
     )

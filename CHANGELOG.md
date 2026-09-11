@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.2.2] - 2026-09-11
+
+- Increase the default task wait timeout to 30 minutes for long video generation.
+
 ## [0.2.1] - 2026-09-11
 
 - Support up to 9 image, 3 video, and 3 audio references for MiniMax H3/Turbo.
