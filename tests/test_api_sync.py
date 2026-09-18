@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import get_args
 
 from everypixel_cli.schemas import (
+    ChatRequest,
     ImageEditModel,
     ImageGenerateModel,
     VideoGenerateModel,
@@ -95,6 +96,8 @@ def test_bundled_openapi_has_current_image_enums_and_quality_ugc():
         "transparent",
     ]
     assert components["ImageGenerateModelEnum"]["enum"] == [
+        "gpt-image-2",
+        "gpt-image-2.5-sunburst",
         "zimage",
         "wan2.7",
         "wan2.7-pro",
@@ -106,13 +109,12 @@ def test_bundled_openapi_has_current_image_enums_and_quality_ugc():
         "gemini-3-pro",
         "seedream-5-pro",
         "seedream-5",
-        "gpt-image-2-low",
-        "gpt-image-2-medium",
-        "gpt-image-2-high",
         "recraftv4_1_vector",
         "recraftv4_1_pro_vector",
     ]
     assert components["ImageEditModelEnum"]["enum"] == [
+        "gpt-image-2",
+        "gpt-image-2.5-sunburst",
         "flux2",
         "qwen",
         "wan2.7",
@@ -124,9 +126,6 @@ def test_bundled_openapi_has_current_image_enums_and_quality_ugc():
         "gemini-3-pro",
         "seedream-5-pro",
         "seedream-5",
-        "gpt-image-2-low",
-        "gpt-image-2-medium",
-        "gpt-image-2-high",
     ]
     assert components["ImageGenerateResolutionEnum"]["enum"] == [
         "1k",
@@ -141,6 +140,48 @@ def test_bundled_openapi_has_current_image_enums_and_quality_ugc():
     assert set(components["ImageEditModelEnum"]["enum"]) == set(
         get_args(ImageEditModel)
     ) - {"grok"}
+    assert components["ImageQualityEnum"]["enum"] == [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+    ]
+    for name in ("ImgenRequest", "ImageEditRequest"):
+        assert {"$ref": "#/components/schemas/ImageQualityEnum"} in (
+            components[name]["properties"]["quality"]["anyOf"]
+        )
+
+
+def test_bundled_chat_contract_matches_local_request_schema():
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    operation = schema["paths"]["/v1/chat/completions"]["post"]
+    assert operation["operationId"] == "chat_completions_v1_chat_completions_post"
+    assert operation["requestBody"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/ChatRequest"
+    }
+    local = ChatRequest.model_json_schema(ref_template="#/components/schemas/{model}")
+    definitions = local.pop("$defs")
+
+    def normalized(value):
+        if isinstance(value, dict):
+            return {
+                key: normalized(item)
+                for key, item in value.items()
+                if key not in {"title", "description"}
+                and not (key == "default" and item is None)
+            }
+        if isinstance(value, list):
+            return [normalized(item) for item in value]
+        if isinstance(value, str) and value.startswith("#/components/schemas/Chat"):
+            return value.replace("/Chat", "/")
+        return value
+
+    for name, component in {"ChatRequest": local, **definitions}.items():
+        live_name = name if name == "ChatRequest" else name.removeprefix("Chat")
+        assert normalized(component) == normalized(
+            schema["components"]["schemas"][live_name]
+        )
 
 
 def test_bundled_openapi_has_current_dev_endpoints_and_content_refs():

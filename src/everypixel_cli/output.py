@@ -66,6 +66,13 @@ def emit_json(data: Any, jq_expr: str | None = None) -> None:
 def emit_human(data: Any, *, title: str | None = None, no_color: bool = False) -> None:
     """Print output using Rich tables or a simple fallback."""
 
+    if (
+        isinstance(data, dict)
+        and data.get("object") == "chat.completion"
+        and isinstance(data.get("choices"), list)
+    ):
+        ChatRenderer(no_color=no_color).finish(data)
+        return
     console = Console(no_color=no_color)
     if title:
         console.print(f"[bold]{title}[/bold]")
@@ -85,6 +92,54 @@ def emit_human(data: Any, *, title: str | None = None, no_color: bool = False) -
         console.print(table)
     else:
         console.print(data)
+
+
+class ChatRenderer:
+    """Render assistant text incrementally without interpreting model markup."""
+
+    def __init__(self, *, show_reasoning: bool = False, no_color: bool = False):
+        self.console = Console(no_color=no_color, markup=False, highlight=False)
+        self.show_reasoning = show_reasoning
+        self.streamed = False
+        self.last_kind: str | None = None
+
+    def _text(self, message: dict[str, Any]) -> None:
+        for kind in ("reasoning_content", "content", "refusal"):
+            if kind == "reasoning_content" and not self.show_reasoning:
+                continue
+            value = message.get(kind)
+            if isinstance(value, str) and value:
+                if self.last_kind == "reasoning_content" and kind != self.last_kind:
+                    self.console.print()
+                self.console.print(
+                    value,
+                    end="",
+                    soft_wrap=True,
+                    style="dim" if kind == "reasoning_content" else None,
+                )
+                self.last_kind = kind
+
+    def chunk(self, event: dict[str, Any]) -> None:
+        self.streamed = True
+        for choice in event.get("choices", []):
+            self._text(choice.get("delta", {}))
+
+    def finish(self, data: Any) -> None:
+        if not isinstance(data, dict) or not isinstance(data.get("choices"), list):
+            emit_human(data, no_color=self.console.no_color)
+            return
+        for choice in data["choices"]:
+            message = choice.get("message", {})
+            if not self.streamed:
+                self._text(message)
+            if self.last_kind is not None:
+                self.console.print()
+                self.last_kind = None
+            if message.get("tool_calls"):
+                self.console.print(
+                    json.dumps(message["tool_calls"], ensure_ascii=False, indent=2),
+                    soft_wrap=True,
+                )
 
 
 def render_known_table(console: Console, data: dict[str, Any]) -> bool:

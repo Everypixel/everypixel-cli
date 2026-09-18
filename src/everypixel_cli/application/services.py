@@ -33,6 +33,8 @@ from ..openapi import (
     validate_payload_against_operation,
 )
 from ..schemas import (
+    ChatRequest,
+    GPT_IMAGE_MODEL_QUALITIES,
     ImageEditPayload,
     ImageGeneratePayload,
     ImageUpscalePayload,
@@ -46,7 +48,9 @@ from ..schemas import (
     VideoGenerateModel,
     VideoUpscalePayload,
     normalize_grok_model,
+    normalize_image_quality,
 )
+from .chat import ChatClientProtocol, ChatService, build_chat_payload
 from .models import (
     ExecutionOptions,
     OperationCancelled,
@@ -61,21 +65,10 @@ _VIDEO_GENERATE_ADAPTER: TypeAdapter[VideoGenerateRequest] = TypeAdapter(
 _VIDEO_EDIT_ADAPTER: TypeAdapter[VideoEditRequest] = TypeAdapter(VideoEditRequest)
 
 
-class EverypixelClientProtocol(Protocol):
+class EverypixelClientProtocol(ChatClientProtocol, Protocol):
     """Small infrastructure seam used by application services."""
 
     base_url: str
-
-    def request(
-        self,
-        method: str,
-        path: str,
-        *,
-        json: dict[str, Any] | None = None,
-        params: dict[str, Any] | None = None,
-        files: dict[str, Any] | None = None,
-        auth_required: bool = True,
-    ) -> Any: ...
 
     def get_status(self, task_id: str) -> Any: ...
 
@@ -837,6 +830,7 @@ class ApplicationServices:
         execution: ExecutionOptions,
         lora_url: str | None = None,
         controls: dict[str, Any] | str | None = None,
+        quality: str | None = None,
     ) -> OperationResult:
         payload = build_image_generate_payload(
             prompt=prompt,
@@ -849,6 +843,7 @@ class ApplicationServices:
             callback_url=callback_url,
             lora_url=lora_url,
             controls=controls,
+            quality=quality,
         )
         return self._execute_async(
             endpoint="/v1/image_generate",
@@ -888,6 +883,7 @@ class ApplicationServices:
         callback_url: str | None,
         execution: ExecutionOptions,
         megapixel_ratio: float = 1.0,
+        quality: str | None = None,
     ) -> OperationResult:
         payload = build_image_edit_payload(
             prompt=prompt,
@@ -896,6 +892,7 @@ class ApplicationServices:
             image_size=image_size,
             resolution=resolution,
             megapixel_ratio=megapixel_ratio,
+            quality=quality,
             seed=seed,
             callback_url=callback_url,
         )
@@ -1225,6 +1222,45 @@ class ApplicationServices:
             fallback_extension=".mp3",
         )
 
+    def execute_chat(
+        self,
+        *,
+        prompt: str | None = None,
+        system: str | None = None,
+        input_file: Path | None = None,
+        payload: dict[str, Any] | None = None,
+        model: str | None = None,
+        stream: bool | None = None,
+        max_completion_tokens: int | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        reasoning_effort: str | None = None,
+        request_timeout: float = 240.0,
+        execution: ExecutionOptions | None = None,
+        on_chunk: Callable[[dict[str, Any]], None] | None = None,
+    ) -> OperationResult:
+        inputs = parse_generic_payload(prompt=None, items=[], input_file=input_file)
+        inputs.update(payload or {})
+        request = build_chat_payload(
+            payload=inputs,
+            prompt=prompt,
+            system=system,
+            options={
+                "model": model,
+                "stream": stream,
+                "max_completion_tokens": max_completion_tokens,
+                "temperature": temperature,
+                "top_p": top_p,
+                "reasoning_effort": reasoning_effort,
+            },
+        )
+        return ChatService(self._operations.client).execute(
+            request,
+            request_timeout=request_timeout,
+            execution=execution,
+            on_chunk=on_chunk,
+        )
+
     def get_task_status(
         self, *, task_id: str, execution: ExecutionOptions
     ) -> OperationResult:
@@ -1276,6 +1312,21 @@ class ApplicationServices:
             )
         if path in {"/v1/image_generate", "/v1/image_edit", "/v1/video_generate"}:
             payload = normalize_grok_model(payload)
+        if path in {"/v1/image_generate", "/v1/image_edit"}:
+            try:
+                payload = normalize_image_quality(payload)
+            except ValueError as exc:
+                raise ValidationCLIError(str(exc)) from exc
+            if (
+                isinstance(payload.get("model"), str)
+                and payload["model"] in GPT_IMAGE_MODEL_QUALITIES
+            ):
+                image_schema = (
+                    ImageGeneratePayload
+                    if path == "/v1/image_generate"
+                    else ImageEditPayload
+                )
+                image_schema.model_validate(payload, extra="ignore")
         if path == "/v1/video_generate" and payload.get("model") in get_args(
             VideoGenerateModel
         ):
@@ -1287,6 +1338,8 @@ class ApplicationServices:
             # specialized model does not know yet; validate known semantics
             # without rewriting or narrowing their payload.
             _VIDEO_EDIT_ADAPTER.validate_python(payload, extra="ignore")
+        if path == "/v1/chat/completions":
+            ChatRequest.model_validate(payload, extra="ignore")
         validate_payload_against_operation(operation, payload)
         if dry_run:
             return OperationResult(
@@ -1299,6 +1352,10 @@ class ApplicationServices:
                     },
                     "schema_source": schema_source,
                 }
+            )
+        if path == "/v1/chat/completions" and resolved_method == "POST":
+            return ChatService(self._operations.client).execute(
+                payload, execution=execution
             )
         return self._operations.execute(
             OperationRequest(

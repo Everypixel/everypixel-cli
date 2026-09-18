@@ -39,9 +39,11 @@ from .errors import (
     normalize_exception,
 )
 from .schemas import (
+    ChatRequest,
     ImageEditMedia,
     ImageEditModel,
     ImageGenerateModel,
+    ImageQuality,
     ImageResolution,
     ImageSize,
     ImageStyle,
@@ -162,6 +164,10 @@ class MCPToolInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class ChatInput(MCPToolInput, ChatRequest):
+    request_timeout: float = Field(default=240.0, gt=0, allow_inf_nan=False)
+
+
 class ImageGenerateInput(MCPToolInput):
     prompt: str
     model: ImageGenerateModel = "zimage"
@@ -171,6 +177,7 @@ class ImageGenerateInput(MCPToolInput):
     lora_url: str | None = None
     controls: RecraftControls | None = None
     resolution: ImageResolution | None = None
+    quality: ImageQuality | None = None
     seed: int = -1
     callback_url: str | None = None
     execution: MCPExecutionOptions | None = None
@@ -182,6 +189,7 @@ class ImageEditInput(MCPToolInput):
     model: ImageEditModel = "flux2"
     image_size: ImageSize | None = None
     resolution: ImageResolution | None = None
+    quality: ImageQuality | None = None
     megapixel_ratio: float = Field(default=1.0, ge=0.5, le=1.5)
     seed: int = -1
     callback_url: str | None = None
@@ -482,6 +490,29 @@ def create_mcp_server(
 
     registry = ToolRegistry()
 
+    @registry.tool(
+        ChatInput,
+        annotations=ToolAnnotations(
+            read_only_hint=False,
+            destructive_hint=False,
+            idempotent_hint=False,
+            open_world_hint=True,
+        ),
+    )
+    def chat(arguments: ChatInput) -> Any:
+        """Chat with GLM-5.3; return text, reasoning, tool calls, and usage.
+
+        Function calls are returned to the caller without executing tools.
+        """
+
+        return services_factory().execute_chat(
+            payload=arguments.model_dump(
+                mode="json", exclude_none=True, exclude={"request_timeout"}
+            ),
+            request_timeout=arguments.request_timeout,
+            execution=_execution(None),
+        )
+
     @registry.tool(ImageGenerateInput, annotations=LOCAL_WRITE)
     def image_generate(arguments: ImageGenerateInput) -> Any:
         """Generate an image from a prompt, optionally using a source image."""
@@ -499,6 +530,7 @@ def create_mcp_server(
                 else None
             ),
             resolution=arguments.resolution,
+            quality=arguments.quality,
             seed=arguments.seed,
             callback_url=arguments.callback_url,
             execution=_execution(arguments.execution),
@@ -515,6 +547,7 @@ def create_mcp_server(
             image_size=arguments.image_size,
             resolution=arguments.resolution,
             megapixel_ratio=arguments.megapixel_ratio,
+            quality=arguments.quality,
             seed=arguments.seed,
             callback_url=arguments.callback_url,
             execution=_execution(arguments.execution),

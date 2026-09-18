@@ -86,6 +86,94 @@ def test_grok_image_models_and_generic_aliases(model, canonical, monkeypatch):
     assert generic["future_option"] is False
 
 
+@pytest.mark.parametrize("operation", ["generate", "edit"])
+@pytest.mark.parametrize(
+    ("model", "quality", "expected_quality"),
+    [
+        ("gpt-image-2", None, "medium"),
+        ("gpt-image-2", "low", "low"),
+        ("gpt-image-2", "medium", "medium"),
+        ("gpt-image-2", "high", "high"),
+        ("gpt-image-2.5-sunburst", None, "medium"),
+        ("gpt-image-2.5-sunburst", "xhigh", "xhigh"),
+        ("gpt-image-2.5-sunburst", "max", "max"),
+        ("gpt-image-2.5-sunburst", "high", "high"),
+    ],
+)
+@respx.mock
+def test_gpt_image_quality_matches_generic_requests(
+    operation, model, quality, expected_quality, monkeypatch
+):
+    route = mock_async_post(f"/v1/image_{operation}")
+    source = "https://img.test/source.png"
+    options = ["--image", source] if operation == "edit" else []
+    if quality is not None:
+        options += ["--quality", quality]
+    invoke_json(["image", operation, "a lake", "--model", model, *options], monkeypatch)
+    body = request_json(route)
+    assert body["model"] == model
+    assert body["quality"] == expected_quality
+    respx.get("https://api.test/v1/openapi.json").respond(200, json=bundled_schema())
+    payload = {**body, "model": model, "future_option": False}
+    payload.pop("quality")
+    if quality is not None:
+        payload["quality"] = quality
+    items = [
+        part
+        for key, value in payload.items()
+        for part in ("--input", f"{key}={json.dumps(value)}")
+    ]
+    for endpoint in (f"image_{operation}", f"/v1/image_{operation}"):
+        invoke_json(["run", endpoint, *items], monkeypatch)
+        assert json.loads(route.calls[-1].request.content) == {
+            **body,
+            "future_option": False,
+        }
+
+
+@pytest.mark.parametrize("operation", ["generate", "edit"])
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"model": "gpt-image-2", "quality": "max"},
+        {"model": "gpt-image-2.5-sunburst", "quality": "invalid"},
+        {"model": "flux2", "quality": "high"},
+        {"model": "gpt-image-2.5-sunburst", "resolution": "4k"},
+        {
+            "model": "gpt-image-2.5-sunburst",
+            "resolution": "3k",
+            "image_size": "landscape_16_9",
+        },
+    ],
+)
+@respx.mock
+def test_gpt_image_invalid_quality_and_size_fail_before_http(operation, fields):
+    image = "https://img.test/source.png"
+    payload = {"prompt": "a lake", **fields}
+    options = [
+        part
+        for key, value in fields.items()
+        for part in ("--size" if key == "image_size" else f"--{key}", value)
+    ]
+    if operation == "edit":
+        options += ["--image", image]
+        payload["image_urls"] = [image]
+    items = [
+        part
+        for key, value in payload.items()
+        for part in ("--input", f"{key}={json.dumps(value)}")
+    ]
+    for command in (
+        ["image", operation, "a lake", *options],
+        ["run", f"/v1/image_{operation}", *items],
+    ):
+        result = runner.invoke(app, ["--base-url", "https://api.test", "-j", *command])
+        assert result.exit_code == 2, result.output
+        assert json.loads(result.stdout)["error"]["code"] == "validation_error"
+        assert result.stderr == ""
+    assert not respx.calls
+
+
 @pytest.mark.parametrize("model", ["topaz-prob-4", "topaz-slp-2.5", "topaz-ast-2"])
 @respx.mock
 def test_topaz_upscale_4k(model, monkeypatch):
@@ -208,6 +296,16 @@ def test_tts_sends_full_text_without_local_limit(
         ["image", "generate", "x", "--model", "grok_quality"],
         ["image", "generate", "x", "--style", "instagram"],
         ["image", "generate", "x", "--controls", "{}"],
+        ["image", "generate", "x", "--model", "gpt-image-2-high"],
+        [
+            "image",
+            "edit",
+            "x",
+            "--image",
+            "https://img.test/a.png",
+            "--model",
+            "gpt-image-2.5-sunburst-max",
+        ],
         [
             "image",
             "generate",
@@ -850,7 +948,10 @@ def test_wan_image_generate_uses_provider_default_resolution(monkeypatch):
 
 @pytest.mark.parametrize(
     ("model", "count", "resolution", "size"),
-    [("gpt-image-2-high", 16, "3k", "square"), ("gemini-3-pro", 14, "4k", None)],
+    [
+        ("gpt-image-2.5-sunburst", 16, "3k", "square"),
+        ("gemini-3-pro", 14, "4k", None),
+    ],
 )
 @respx.mock
 def test_image_edit_accepts_expanded_input_limits(

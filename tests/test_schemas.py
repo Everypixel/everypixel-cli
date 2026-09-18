@@ -2,6 +2,7 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 
 from everypixel_cli.schemas import (
+    ChatRequest,
     ImageEditPayload,
     ImageGeneratePayload,
     ImageUpscalePayload,
@@ -21,6 +22,44 @@ _VIDEO_EDIT_ADAPTER: TypeAdapter[VideoEditRequest] = TypeAdapter(VideoEditReques
 
 def validate_video_generate(**values):
     return _VIDEO_GENERATE_ADAPTER.validate_python(values)
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"messages": [{"role": "system", "content": "Be concise"}]},
+        {"messages": [{"role": "user", "content": None}]},
+        {"messages": [{"role": "tool", "content": "result"}]},
+        {"messages": [{"role": "user", "content": "Hi", "tool_call_id": "call-1"}]},
+        {"messages": [{"role": "user", "content": "Hi", "reasoning_content": "x"}]},
+        {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": "https://img.test/photo.png"}
+                    ],
+                }
+            ]
+        },
+        {"tool_choice": "auto"},
+        {"stream_options": {"include_usage": True}},
+        {"tool_stream": True},
+        {"thinking": {"type": "disabled"}},
+        {"max_tokens": True},
+        {"tools": [{"type": "web_search"}]},
+        {"unexpected": True},
+    ],
+)
+def test_chat_rejects_invalid_roles_and_options(fields):
+    with pytest.raises(ValidationError):
+        ChatRequest.model_validate(
+            {
+                "model": "glm-5.3",
+                "messages": [{"role": "user", "content": "Hi"}],
+                **fields,
+            }
+        )
 
 
 @pytest.mark.parametrize(
@@ -61,7 +100,7 @@ def test_new_image_models_apply_provider_constraints():
     assert (
         ImageEditPayload(
             prompt="x",
-            model="gpt-image-2-medium",
+            model="gpt-image-2",
             resolution="3k",
             image_urls=["https://img.test/source.png"],
         ).image_size

@@ -1,8 +1,8 @@
 # Everypixel CLI
 
 Official command-line interface for the [Everypixel API](https://labs.everypixel.com/).
-Generate and edit images and videos, work with audio, run visual analysis, and
-automate Everypixel workflows from a terminal or an MCP client.
+Generate and edit images and videos, chat with GLM-5.3, work with audio, run
+visual analysis, and automate Everypixel workflows from a terminal or an MCP client.
 
 The CLI is designed for both people and agents: commands use readable terminal
 output by default and can return stable JSON for scripts and tool integrations.
@@ -147,6 +147,15 @@ to select their aspect ratio. Raster models also accept `--resolution`.
 
 `--lora-url` is supported only by `zimage`.
 
+GPT Image models are `gpt-image-2` and `gpt-image-2.5-sunburst`. Both generation
+and editing accept `--quality low|medium|high` (default: `medium`); Sunburst also
+supports `xhigh` and `max`. Use `--size square` with `--resolution 3k`.
+
+```bash
+everypixel image generate "a detailed botanical illustration" \
+  --model gpt-image-2.5-sunburst --quality high --download ./outputs
+```
+
 Grok image models are `grok-imagine`, `grok-imagine-2`, and
 `grok-imagine-2-low`. The `grok` alias remains supported. `grok_quality` and
 `wan22` have been removed from the API.
@@ -246,6 +255,37 @@ everypixel audio tts-create \
   --language English \
   --download ./outputs
 ```
+
+### Chat
+
+```bash
+everypixel chat "Explain how a rainbow forms."
+everypixel chat "Review this idea." --system "Be concise." --stream
+everypixel chat "Solve this problem." --reasoning-effort high --show-reasoning
+everypixel chat --input-file ./conversation.json --output-json
+```
+
+Chat uses the same credentials as other commands and requires the client's
+`chat` scope. The default model is `glm-5.3`. Each invocation sends one request;
+use `--input-file` for conversation history, function tools, or other API options:
+
+```json
+{
+  "messages": [
+    {"role": "user", "content": "What causes rainbows?"},
+    {"role": "assistant", "content": "Sunlight refracts and reflects in water droplets."},
+    {"role": "user", "content": "Why do the colors separate?"}
+  ],
+  "max_completion_tokens": 4096
+}
+```
+
+A positional prompt appends a user message to the supplied history. CLI options
+override matching fields in the file. `--stream` displays text as it arrives;
+JSON output returns one assembled response, including reasoning, tool calls,
+and usage. Function calls are returned for the caller to handle. The MCP `chat`
+tool accepts the same structured request and returns a complete response.
+Use `--request-timeout` to change the chat HTTP timeout (default: 240 seconds).
 
 ### Visual Analysis
 

@@ -32,7 +32,10 @@ ImageSize = Literal[
 ]
 ImageStyle = Literal["portrait", "transparent"]
 ImageResolution = Literal["1k", "2k", "3k", "4k"]
+ImageQuality = Literal["low", "medium", "high", "xhigh", "max"]
+GPTImageModel = Literal["gpt-image-2", "gpt-image-2.5-sunburst"]
 RasterImageGenerateModel = Literal[
+    GPTImageModel,
     "zimage",
     "wan2.7",
     "wan2.7-pro",
@@ -45,11 +48,9 @@ RasterImageGenerateModel = Literal[
     "gemini-3-pro",
     "seedream-5-pro",
     "seedream-5",
-    "gpt-image-2-low",
-    "gpt-image-2-medium",
-    "gpt-image-2-high",
 ]
 ImageEditModel = Literal[
+    GPTImageModel,
     "flux2",
     "qwen",
     "wan2.7",
@@ -62,9 +63,6 @@ ImageEditModel = Literal[
     "gemini-3-pro",
     "seedream-5-pro",
     "seedream-5",
-    "gpt-image-2-low",
-    "gpt-image-2-medium",
-    "gpt-image-2-high",
 ]
 
 _GEMINI_IMAGE_MODELS = {"gemini-3.1-flash", "gemini-3-pro"}
@@ -73,10 +71,9 @@ RecraftVectorModel = Literal["recraftv4_1_vector", "recraftv4_1_pro_vector"]
 ImageGenerateModel = Literal[RasterImageGenerateModel, RecraftVectorModel]
 _WAN_IMAGE_MODELS = {"wan2.7", "wan2.7-pro"}
 _SEEDREAM_IMAGE_MODELS = {"seedream-5-pro", "seedream-5"}
-_GPT_IMAGE_2_MODELS = {
-    "gpt-image-2-low",
-    "gpt-image-2-medium",
-    "gpt-image-2-high",
+GPT_IMAGE_MODEL_QUALITIES = {
+    "gpt-image-2": ("low", "medium", "high"),
+    "gpt-image-2.5-sunburst": ("low", "medium", "high", "xhigh", "max"),
 }
 _IMAGE_EDIT_MODEL_MAX_IMAGES = {
     "flux2": 5,
@@ -90,9 +87,8 @@ _IMAGE_EDIT_MODEL_MAX_IMAGES = {
     "gemini-3-pro": 14,
     "seedream-5-pro": 10,
     "seedream-5": 14,
-    "gpt-image-2-low": 16,
-    "gpt-image-2-medium": 16,
-    "gpt-image-2-high": 16,
+    "gpt-image-2": 16,
+    "gpt-image-2.5-sunburst": 16,
 }
 ImageEditMedia = Annotated[
     list[str],
@@ -120,6 +116,24 @@ def normalize_grok_model(value: Any) -> Any:
                 value["model"]
             ],
         }
+    return value
+
+
+def normalize_image_quality(value: Any) -> Any:
+    """Apply quality defaults and validate the selected model's quality contract."""
+
+    if not isinstance(value, dict):
+        return value
+    value = dict(value)
+    model = value.get("model")
+    if isinstance(model, str) and model in GPT_IMAGE_MODEL_QUALITIES:
+        quality = value.get("quality", "medium")
+        if quality not in GPT_IMAGE_MODEL_QUALITIES[model]:
+            raise ValueError(f"quality {quality} is not supported by model {model}")
+        value["quality"] = quality
+        return value
+    if "quality" in value:
+        raise ValueError("quality is supported only by GPT Image models")
     return value
 
 
@@ -178,6 +192,7 @@ class ImageGeneratePayload(BaseModel):
     image_size: ImageSize = "square"
     style: ImageStyle | None = None
     resolution: ImageResolution = "1k"
+    quality: ImageQuality | None = None
     seed: int = -1
     image_url: str | None = None
     lora_url: HttpUrl | None = None
@@ -186,7 +201,7 @@ class ImageGeneratePayload(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def normalize_model(cls, value: Any) -> Any:
-        return normalize_grok_model(value)
+        return normalize_image_quality(normalize_grok_model(value))
 
     @model_validator(mode="after")
     def validate_model_constraints(self) -> "ImageGeneratePayload":
@@ -241,10 +256,10 @@ class ImageGeneratePayload(BaseModel):
             raise ValueError(
                 f"resolution {self.resolution} is not supported by model {self.model}"
             )
-        if self.model in _GPT_IMAGE_2_MODELS:
+        if self.model in GPT_IMAGE_MODEL_QUALITIES:
             if self.image_url is not None:
                 raise ValueError(
-                    "image is not supported for GPT Image 2 image generate; "
+                    "image is not supported for GPT Image image generate; "
                     "use image edit"
                 )
             if self.resolution not in {"1k", "2k", "3k"}:
@@ -252,6 +267,8 @@ class ImageGeneratePayload(BaseModel):
                     f"resolution {self.resolution} is not supported by model "
                     f"{self.model}"
                 )
+            if self.resolution == "3k" and self.image_size != "square":
+                raise ValueError("GPT Image 3k supports only square image_size")
         if self.model in _SEEDREAM_IMAGE_MODELS:
             if self.image_url is not None:
                 raise ValueError(
@@ -279,6 +296,7 @@ class ImageEditPayload(BaseModel):
     model: ImageEditModel = "flux2"
     image_size: ImageSize | None = None
     resolution: ImageResolution = "1k"
+    quality: ImageQuality | None = None
     megapixel_ratio: float = Field(default=1.0, ge=0.5, le=1.5)
     seed: int = -1
     callback_url: str | None = None
@@ -286,7 +304,7 @@ class ImageEditPayload(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def normalize_model(cls, value: Any) -> Any:
-        return normalize_grok_model(value)
+        return normalize_image_quality(normalize_grok_model(value))
 
     @model_validator(mode="after")
     def validate_model_limits(self) -> "ImageEditPayload":
@@ -339,7 +357,7 @@ class ImageEditPayload(BaseModel):
                     f"resolution {self.resolution} is not supported by model "
                     f"{self.model}"
                 )
-        if self.model in _GPT_IMAGE_2_MODELS:
+        if self.model in GPT_IMAGE_MODEL_QUALITIES:
             if self.resolution not in {"1k", "2k", "3k"}:
                 raise ValueError(
                     f"resolution {self.resolution} is not supported by model "
@@ -347,6 +365,117 @@ class ImageEditPayload(BaseModel):
                 )
             if self.image_size is None:
                 self.image_size = "square"
+            if self.resolution == "3k" and self.image_size != "square":
+                raise ValueError("GPT Image 3k supports only square image_size")
+        return self
+
+
+class _StrictChatPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+
+class ChatFunctionCall(_StrictChatPayload):
+    name: str = Field(min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
+    arguments: str
+
+
+class ChatToolCall(_StrictChatPayload):
+    id: str = Field(min_length=1)
+    type: Literal["function"]
+    function: ChatFunctionCall
+
+
+class ChatTextPart(_StrictChatPayload):
+    type: Literal["text"]
+    text: str
+
+
+class ChatMessage(_StrictChatPayload):
+    role: Literal["system", "user", "assistant", "tool", "developer"]
+    content: str | list[ChatTextPart] | None = None
+    name: str | None = Field(
+        default=None, min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"
+    )
+    reasoning_content: str | None = None
+    tool_calls: list[ChatToolCall] | None = None
+    tool_call_id: str | None = None
+
+    @model_validator(mode="after")
+    def validate_role(self) -> "ChatMessage":
+        if self.content is None and not (self.role == "assistant" and self.tool_calls):
+            raise ValueError(
+                "content is required unless the assistant returns tool_calls"
+            )
+        if self.role == "tool" and not self.tool_call_id:
+            raise ValueError("tool messages require tool_call_id")
+        if self.role != "tool" and self.tool_call_id is not None:
+            raise ValueError("tool_call_id belongs to tool messages")
+        if self.role != "assistant" and (
+            self.tool_calls is not None or self.reasoning_content is not None
+        ):
+            raise ValueError(
+                "tool_calls and reasoning_content belong to assistant messages"
+            )
+        return self
+
+
+class ChatFunction(_StrictChatPayload):
+    name: str = Field(min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
+    description: str | None = None
+    parameters: dict[str, Any] | None = None
+    strict: bool | None = None
+
+
+class ChatTool(_StrictChatPayload):
+    type: Literal["function"]
+    function: ChatFunction
+
+
+class ChatThinking(_StrictChatPayload):
+    type: Literal["enabled"] = "enabled"
+    clear_thinking: bool | None = None
+
+
+class ChatStreamOptions(_StrictChatPayload):
+    include_usage: bool = False
+
+
+class ChatResponseFormat(_StrictChatPayload):
+    type: Literal["text", "json_object"]
+
+
+class ChatRequest(_StrictChatPayload):
+    """Public GLM chat contract shared by specialized, generic, and MCP callers."""
+
+    model: Literal["glm-5.3"]
+    messages: list[ChatMessage] = Field(min_length=1)
+    stream: bool = False
+    stream_options: ChatStreamOptions | None = None
+    tool_stream: bool = False
+    tools: list[ChatTool] | None = Field(default=None, min_length=1, max_length=128)
+    tool_choice: Literal["auto"] | None = None
+    thinking: ChatThinking | None = None
+    reasoning_effort: Literal["low", "high", "max"] | None = None
+    temperature: float | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
+    top_p: float | None = Field(default=None, ge=0.01, le=1, allow_inf_nan=False)
+    do_sample: bool | None = None
+    max_tokens: int | None = Field(default=None, ge=1, le=131072)
+    max_completion_tokens: int | None = Field(default=None, ge=1, le=131072)
+    stop: str | Annotated[list[str], Field(min_length=1, max_length=1)] | None = None
+    response_format: ChatResponseFormat | None = None
+    n: int = Field(default=1, ge=1, le=1)
+    user: str | None = Field(default=None, min_length=6, max_length=128)
+
+    @model_validator(mode="after")
+    def validate_options(self) -> "ChatRequest":
+        if self.max_tokens is not None and self.max_completion_tokens is not None:
+            raise ValueError("Use only one of max_tokens and max_completion_tokens")
+        if (self.tool_stream or self.stream_options is not None) and not self.stream:
+            raise ValueError("tool_stream and stream_options require stream=true")
+        if self.tool_choice is not None and not self.tools:
+            raise ValueError("tool_choice requires tools")
+        if not any(message.role in ("user", "tool") for message in self.messages):
+            raise ValueError("messages must contain a user or tool message")
         return self
 
 

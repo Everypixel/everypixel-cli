@@ -48,7 +48,7 @@ from .errors import (
     normalize_exception,
 )
 from .openapi import load_schema
-from .output import emit_error, emit_human, emit_json
+from .output import ChatRenderer, emit_error, emit_human, emit_json
 
 
 def json_output_requested(args: Sequence[str]) -> bool:
@@ -395,11 +395,20 @@ def stop_with_error(ctx: typer.Context, exc: Exception) -> NoReturn:
     raise typer.Exit(error.exit_code) from exc
 
 
-def run_action(ctx: typer.Context, action: Callable[[], Any]) -> None:
+def run_action(
+    ctx: typer.Context,
+    action: Callable[[], Any],
+    *,
+    render: Callable[[Any], None] | None = None,
+) -> None:
     """Run a command action and handle all expected application errors."""
 
     try:
-        finish(ctx, action())
+        value = action()
+        if render is None:
+            finish(ctx, value)
+        else:
+            render(value)
     except typer.Exit:
         raise
     except (
@@ -428,6 +437,83 @@ def apply_common_options(
     if wait_option is not None:
         runtime.wait = wait_option
     return runtime
+
+
+@app.command("chat")
+def chat(
+    ctx: typer.Context,
+    prompt: Annotated[
+        Optional[str], typer.Argument(help="User message to append.")
+    ] = None,
+    system: Annotated[
+        Optional[str], typer.Option("--system", help="System instruction.")
+    ] = None,
+    input_file: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--input-file",
+            help="JSON request with messages, tools, and other chat options.",
+        ),
+    ] = None,
+    model: Annotated[
+        Optional[str], typer.Option("--model", help="Chat model (default: glm-5.3).")
+    ] = None,
+    stream: Annotated[
+        Optional[bool],
+        typer.Option("--stream/--no-stream", help="Stream the response."),
+    ] = None,
+    max_completion_tokens: Annotated[
+        Optional[int], typer.Option("--max-completion-tokens")
+    ] = None,
+    temperature: Annotated[Optional[float], typer.Option("--temperature")] = None,
+    top_p: Annotated[Optional[float], typer.Option("--top-p")] = None,
+    reasoning_effort: Annotated[
+        Optional[str], typer.Option("--reasoning-effort", help="low, high, or max.")
+    ] = None,
+    show_reasoning: Annotated[
+        bool,
+        typer.Option("--show-reasoning", help="Include reasoning in human output."),
+    ] = False,
+    request_timeout: Annotated[
+        float,
+        typer.Option(
+            "--request-timeout",
+            callback=positive_float,
+            help="HTTP timeout in seconds.",
+        ),
+    ] = 240.0,
+    output_json: OutputJsonOption = False,
+    jq_expr: JqOption = None,
+) -> None:
+    """Chat with GLM-5.3 using a prompt or a JSON conversation."""
+
+    runtime = apply_common_options(ctx, output_json=output_json, jq_expr=jq_expr)
+    renderer = ChatRenderer(show_reasoning=show_reasoning, no_color=runtime.no_color)
+
+    def render(result: Any) -> None:
+        if runtime.output_json:
+            finish(ctx, result)
+        else:
+            renderer.finish(serialize_operation_result(result))
+
+    run_action(
+        ctx,
+        lambda: runtime.services().execute_chat(
+            prompt=prompt,
+            system=system,
+            input_file=input_file,
+            model=model,
+            stream=stream,
+            max_completion_tokens=max_completion_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            reasoning_effort=reasoning_effort,
+            request_timeout=request_timeout,
+            execution=runtime.execution_options(),
+            on_chunk=None if runtime.output_json else renderer.chunk,
+        ),
+        render=render,
+    )
 
 
 @auth_app.command("configure")
@@ -584,6 +670,13 @@ def image_generate(
         typer.Option("--controls", help="Recraft palette controls as JSON."),
     ] = None,
     resolution: Annotated[Optional[str], typer.Option("--resolution")] = None,
+    quality: Annotated[
+        Optional[str],
+        typer.Option(
+            "--quality",
+            help="GPT Image quality: low, medium, high; 2.5 also xhigh, max.",
+        ),
+    ] = None,
     seed: Annotated[int, typer.Option("--seed")] = -1,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
     wait_option: WaitOption = None,
@@ -611,6 +704,7 @@ def image_generate(
             lora_url=lora_url,
             controls=controls,
             resolution=resolution,
+            quality=quality,
             seed=seed,
             callback_url=callback_url,
             execution=runtime.execution_options(),
@@ -630,6 +724,13 @@ def image_edit(
     size: Annotated[Optional[str], typer.Option("--size")] = None,
     resolution: Annotated[Optional[str], typer.Option("--resolution")] = None,
     megapixel_ratio: Annotated[float, typer.Option("--megapixel-ratio")] = 1.0,
+    quality: Annotated[
+        Optional[str],
+        typer.Option(
+            "--quality",
+            help="GPT Image quality: low, medium, high; 2.5 also xhigh, max.",
+        ),
+    ] = None,
     seed: Annotated[int, typer.Option("--seed")] = -1,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
     wait_option: WaitOption = None,
@@ -655,6 +756,7 @@ def image_edit(
             image_size=size,
             resolution=resolution,
             megapixel_ratio=megapixel_ratio,
+            quality=quality,
             seed=seed,
             callback_url=callback_url,
             execution=runtime.execution_options(),

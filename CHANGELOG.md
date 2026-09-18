@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.0] - 2026-09-18
+
+- Add GPT Image 2.5 Sunburst and quality selection for GPT Image models.
+- Add GLM-5.3 chat with streaming and tool-call support.
+
 ## [0.2.2] - 2026-09-11
 
 - Increase the default task wait timeout to 30 minutes for long video generation.

@@ -20,6 +20,7 @@ from everypixel_cli.mcp_server import create_mcp_server
 
 
 EXPECTED_TOOLS = {
+    "chat",
     "image_generate",
     "image_vectorize",
     "image_edit",
@@ -140,6 +141,8 @@ def test_mcp_tool_delegates_to_application_services_and_serializes_result() -> N
                 "image_generate",
                 {
                     "prompt": "product photo",
+                    "model": "gpt-image-2.5-sunburst",
+                    "quality": "max",
                     "execution": {
                         "download_directory": "/tmp/everypixel-output",
                         "timeout": 12,
@@ -154,7 +157,8 @@ def test_mcp_tool_delegates_to_application_services_and_serializes_result() -> N
     assert result.structured_content == {"task_id": "task-1", "status": "PENDING"}
     name, arguments = services.calls[0]
     assert name == "execute_image_generate"
-    assert arguments["model"] == "zimage"
+    assert arguments["model"] == "gpt-image-2.5-sunburst"
+    assert arguments["quality"] == "max"
     assert arguments["execution"].wait is True
     assert arguments["execution"].download_directory == Path("/tmp/everypixel-output")
     assert arguments["execution"].timeout == 12
@@ -193,6 +197,78 @@ def test_mcp_minimax_accepts_audio_references_without_images() -> None:
     assert payload["reference_audio_urls"][0].startswith("data:audio/")
     assert payload["reference_image_urls"] == []
     assert payload["reference_video_urls"] == []
+
+
+@pytest.mark.parametrize("streaming", [False, True])
+@respx.mock
+def test_mcp_chat_returns_complete_response(streaming):
+    completion = {
+        "id": "chat-1",
+        "object": "chat.completion",
+        "model": "glm-5.3",
+        "choices": [
+            {
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": "Hello",
+                    "reasoning_content": "Think",
+                },
+                "finish_reason": "stop",
+            }
+        ],
+        "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+    }
+    route = respx.post("https://api.test/v1/chat/completions")
+    if streaming:
+        event = {
+            **completion,
+            "object": "chat.completion.chunk",
+            "choices": [
+                {
+                    "index": 0,
+                    "delta": completion["choices"][0]["message"],
+                    "finish_reason": "stop",
+                }
+            ],
+        }
+        route.respond(
+            200,
+            headers={"content-type": "text/event-stream"},
+            text="data: " + json.dumps(event) + "\n\ndata: [DONE]\n\n",
+        )
+    else:
+        route.respond(200, json=completion)
+    services = ApplicationServices.with_client(
+        APIClient(base_url="https://api.test", client_id="id", client_secret="secret")
+    )
+
+    async def call_tool():
+        server = create_mcp_server(lambda: services)
+        async with Client(server) as client:
+            return await client.call_tool(
+                "chat",
+                {
+                    "model": "glm-5.3",
+                    "messages": [{"role": "user", "content": "Hi"}],
+                    "stream": streaming,
+                    "temperature": 0,
+                    "do_sample": False,
+                },
+            )
+
+    try:
+        result = asyncio.run(call_tool())
+    finally:
+        services.close()
+    assert result.is_error is False
+    assert result.structured_content == completion
+    assert route.call_count == len(respx.calls) == 1
+    payload = json.loads(route.calls[0].request.content)
+    assert payload["temperature"] == 0
+    assert payload["do_sample"] is False
+    if streaming:
+        assert payload["stream_options"] == {"include_usage": True}
 
 
 def test_mcp_tool_returns_sanitized_structured_error() -> None:

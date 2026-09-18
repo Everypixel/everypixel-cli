@@ -461,6 +461,216 @@
         "title": "CaptioningResponse",
         "type": "object"
       },
+      "ChatRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "do_sample": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Do Sample"
+          },
+          "max_completion_tokens": {
+            "anyOf": [
+              {
+                "maximum": 131072.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Completion Tokens"
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "maximum": 131072.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            },
+            "minItems": 1,
+            "title": "Messages",
+            "type": "array"
+          },
+          "model": {
+            "const": "glm-5.3",
+            "title": "Model",
+            "type": "string"
+          },
+          "n": {
+            "default": 1,
+            "maximum": 1.0,
+            "minimum": 1.0,
+            "title": "N",
+            "type": "integer"
+          },
+          "reasoning_effort": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "high",
+                  "max"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Effort"
+          },
+          "response_format": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResponseFormat"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stop": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 1,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop"
+          },
+          "stream": {
+            "default": false,
+            "title": "Stream",
+            "type": "boolean"
+          },
+          "stream_options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreamOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          },
+          "thinking": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Thinking"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tool_choice": {
+            "anyOf": [
+              {
+                "const": "auto",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Choice"
+          },
+          "tool_stream": {
+            "default": false,
+            "title": "Tool Stream",
+            "type": "boolean"
+          },
+          "tools": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Tool"
+                },
+                "maxItems": 128,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tools"
+          },
+          "top_p": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.01,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top P"
+          },
+          "user": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 6,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User"
+          }
+        },
+        "required": [
+          "model",
+          "messages"
+        ],
+        "title": "ChatRequest",
+        "type": "object"
+      },
       "DistanceEnum": {
         "enum": [
           "close_up",
@@ -660,6 +870,79 @@
         ],
         "title": "Flux3VideoResolutionEnum",
         "type": "string"
+      },
+      "Function": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Name",
+            "type": "string"
+          },
+          "parameters": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parameters"
+          },
+          "strict": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strict"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "Function",
+        "type": "object"
+      },
+      "FunctionCall": {
+        "additionalProperties": false,
+        "properties": {
+          "arguments": {
+            "title": "Arguments",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "arguments"
+        ],
+        "title": "FunctionCall",
+        "type": "object"
       },
       "Grok15VideoGenRequest": {
         "properties": {
@@ -940,6 +1223,8 @@
       },
       "ImageEditModelEnum": {
         "enum": [
+          "gpt-image-2",
+          "gpt-image-2.5-sunburst",
           "flux2",
           "qwen",
           "wan2.7",
@@ -950,10 +1235,7 @@
           "gemini-3.1-flash",
           "gemini-3-pro",
           "seedream-5-pro",
-          "seedream-5",
-          "gpt-image-2-low",
-          "gpt-image-2-medium",
-          "gpt-image-2-high"
+          "seedream-5"
         ],
         "title": "ImageEditModelEnum",
         "type": "string"
@@ -1008,9 +1290,21 @@
             "title": "Prompt",
             "type": "string"
           },
+          "quality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImageQualityEnum"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "GPT Image quality; defaults to medium. Unsupported for other models."
+          },
           "resolution": {
             "$ref": "#/components/schemas/ImageGenerateResolutionEnum",
-            "default": "1k"
+            "default": "1k",
+            "description": "Output size tier. GPT Image 3k supports only square image_size."
           },
           "seed": {
             "default": -1,
@@ -1027,6 +1321,8 @@
       },
       "ImageGenerateModelEnum": {
         "enum": [
+          "gpt-image-2",
+          "gpt-image-2.5-sunburst",
           "zimage",
           "wan2.7",
           "wan2.7-pro",
@@ -1038,9 +1334,6 @@
           "gemini-3-pro",
           "seedream-5-pro",
           "seedream-5",
-          "gpt-image-2-low",
-          "gpt-image-2-medium",
-          "gpt-image-2-high",
           "recraftv4_1_vector",
           "recraftv4_1_pro_vector"
         ],
@@ -1112,6 +1405,17 @@
         ],
         "title": "ImageLipsyncRequest",
         "type": "object"
+      },
+      "ImageQualityEnum": {
+        "enum": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "title": "ImageQualityEnum",
+        "type": "string"
       },
       "ImageRemoveBackgroundRequest": {
         "properties": {
@@ -1333,9 +1637,21 @@
             "title": "Prompt",
             "type": "string"
           },
+          "quality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImageQualityEnum"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "GPT Image quality; defaults to medium. Unsupported for other models."
+          },
           "resolution": {
             "$ref": "#/components/schemas/ImageGenerateResolutionEnum",
-            "default": "1k"
+            "default": "1k",
+            "description": "Output size tier. GPT Image 3k supports only square image_size."
           },
           "seed": {
             "default": -1,
@@ -2003,6 +2319,94 @@
         "title": "LipsyncRequest",
         "type": "object"
       },
+      "Message": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TextPart"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "pattern": "^[a-zA-Z0-9_-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "reasoning_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Content"
+          },
+          "role": {
+            "enum": [
+              "system",
+              "user",
+              "assistant",
+              "tool",
+              "developer"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "tool_call_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Call Id"
+          },
+          "tool_calls": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ToolCall"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Calls"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "title": "Message",
+        "type": "object"
+      },
       "MiniMaxH3VideoGenRequest": {
         "additionalProperties": false,
         "properties": {
@@ -2263,6 +2667,24 @@
           }
         },
         "title": "RecraftControls",
+        "type": "object"
+      },
+      "ResponseFormat": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "enum": [
+              "text",
+              "json_object"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "ResponseFormat",
         "type": "object"
       },
       "Seedance2ContentAudio": {
@@ -2536,6 +2958,18 @@
           "status"
         ],
         "title": "StatusResponse",
+        "type": "object"
+      },
+      "StreamOptions": {
+        "additionalProperties": false,
+        "properties": {
+          "include_usage": {
+            "default": false,
+            "title": "Include Usage",
+            "type": "boolean"
+          }
+        },
+        "title": "StreamOptions",
         "type": "object"
       },
       "TTSCharacterEnum": {
@@ -2813,6 +3247,94 @@
           "task_id"
         ],
         "title": "TaskResponse",
+        "type": "object"
+      },
+      "TextPart": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "text",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "title": "TextPart",
+        "type": "object"
+      },
+      "Thinking": {
+        "additionalProperties": false,
+        "properties": {
+          "clear_thinking": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clear Thinking"
+          },
+          "type": {
+            "const": "enabled",
+            "default": "enabled",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "title": "Thinking",
+        "type": "object"
+      },
+      "Tool": {
+        "additionalProperties": false,
+        "properties": {
+          "function": {
+            "$ref": "#/components/schemas/Function"
+          },
+          "type": {
+            "const": "function",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "function"
+        ],
+        "title": "Tool",
+        "type": "object"
+      },
+      "ToolCall": {
+        "additionalProperties": false,
+        "properties": {
+          "function": {
+            "$ref": "#/components/schemas/FunctionCall"
+          },
+          "id": {
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "function",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "function"
+        ],
+        "title": "ToolCall",
         "type": "object"
       },
       "ValidationError": {
@@ -3621,6 +4143,42 @@
         "tags": [
           "auth"
         ]
+      }
+    },
+    "/v1/chat/completions": {
+      "post": {
+        "operationId": "chat_completions_v1_chat_completions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Chat Completions"
       }
     },
     "/v1/faces": {
