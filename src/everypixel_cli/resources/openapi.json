@@ -690,6 +690,51 @@
         "title": "ElevationEnum",
         "type": "string"
       },
+      "ElevenLabsVoiceDesignRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "model": {
+            "enum": [
+              "eleven_multilingual_ttv_v2",
+              "eleven_ttv_v3"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "maxLength": 1000,
+            "minLength": 20,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 1000,
+            "minLength": 100,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model",
+          "prompt",
+          "text"
+        ],
+        "title": "ElevenLabsVoiceDesignRequest",
+        "type": "object"
+      },
       "FacesResponse": {
         "properties": {
           "faces": {
@@ -1705,6 +1750,10 @@
                 "type": "string"
               },
               {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -2599,6 +2648,64 @@
         "title": "QualityUGCResponse",
         "type": "object"
       },
+      "QwenTTSDesignRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "character": {
+            "$ref": "#/components/schemas/TTSCharacterEnum",
+            "default": "Female"
+          },
+          "language": {
+            "$ref": "#/components/schemas/TTSLanguageEnum",
+            "default": "Auto"
+          },
+          "model": {
+            "const": "qwen3",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "style": {
+            "$ref": "#/components/schemas/TTSStyleEnum",
+            "default": "Auto"
+          },
+          "text": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model",
+          "text"
+        ],
+        "title": "QwenTTSDesignRequest",
+        "type": "object"
+      },
       "RecraftColor": {
         "properties": {
           "rgb": {
@@ -2995,8 +3102,15 @@
       "TTSCloneRequest": {
         "properties": {
           "audio_url": {
-            "title": "Audio Url",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio Url"
           },
           "callback_url": {
             "anyOf": [
@@ -3016,6 +3130,11 @@
             "$ref": "#/components/schemas/TTSLanguageEnum",
             "default": "Auto"
           },
+          "model": {
+            "const": "qwen3",
+            "title": "Model",
+            "type": "string"
+          },
           "seed": {
             "default": -1,
             "title": "Seed",
@@ -3023,12 +3142,25 @@
           },
           "text": {
             "maxLength": 200,
+            "minLength": 1,
             "title": "Text",
             "type": "string"
+          },
+          "voice_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Id"
           }
         },
         "required": [
-          "audio_url",
+          "model",
           "text"
         ],
         "title": "TTSCloneRequest",
@@ -3054,8 +3186,23 @@
             "$ref": "#/components/schemas/TTSLanguageEnum",
             "default": "Auto"
           },
+          "model": {
+            "default": "qwen3",
+            "enum": [
+              "qwen3",
+              "eleven_v4",
+              "eleven_v4_turbo",
+              "eleven_v3",
+              "eleven_v3_conversational",
+              "eleven_multilingual_v2",
+              "eleven_flash_v2_5"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
           "prompt": {
             "default": "",
+            "maxLength": 1000,
             "title": "Prompt",
             "type": "string"
           },
@@ -3073,9 +3220,22 @@
             "default": "Auto"
           },
           "text": {
-            "maxLength": 200,
+            "maxLength": 2048,
+            "minLength": 1,
             "title": "Text",
             "type": "string"
+          },
+          "voice_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Id"
           }
         },
         "required": [
@@ -3169,54 +3329,70 @@
         "title": "TTSStyleEnum",
         "type": "string"
       },
-      "TTSVoiceRequest": {
+      "TTSVoiceSaveRequest": {
+        "additionalProperties": false,
         "properties": {
-          "callback_url": {
+          "audio_urls": {
             "anyOf": [
               {
-                "format": "uri",
-                "maxLength": 2083,
-                "minLength": 1,
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 10,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio Urls"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "preview_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Callback Url"
+            "title": "Preview Id"
           },
-          "character": {
-            "$ref": "#/components/schemas/TTSCharacterEnum",
-            "default": "Female"
-          },
-          "language": {
-            "$ref": "#/components/schemas/TTSLanguageEnum",
-            "default": "Auto"
-          },
-          "prompt": {
-            "default": "",
-            "title": "Prompt",
-            "type": "string"
-          },
-          "seed": {
-            "default": -1,
-            "title": "Seed",
-            "type": "integer"
-          },
-          "style": {
-            "$ref": "#/components/schemas/TTSStyleEnum",
-            "default": "Auto"
-          },
-          "text": {
-            "maxLength": 200,
-            "title": "Text",
-            "type": "string"
+          "provider": {
+            "anyOf": [
+              {
+                "enum": [
+                  "labs",
+                  "elevenlabs"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "labs",
+            "title": "Provider"
           }
         },
         "required": [
-          "text"
+          "name"
         ],
-        "title": "TTSVoiceRequest",
+        "title": "TTSVoiceSaveRequest",
         "type": "object"
       },
       "TaskResponse": {
@@ -5537,7 +5713,7 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
@@ -5578,7 +5754,7 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
@@ -5605,21 +5781,29 @@
         ]
       }
     },
-    "/v1/tts_voice": {
+    "/v1/tts_design": {
       "post": {
-        "operationId": "tts_voice_v1_tts_voice_post",
+        "operationId": "tts_design_v1_tts_design_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TTSVoiceRequest"
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/QwenTTSDesignRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ElevenLabsVoiceDesignRequest"
+                  }
+                ],
+                "title": "Data"
               }
             }
           },
           "required": true
         },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
@@ -5640,7 +5824,153 @@
             "description": "Validation Error"
           }
         },
+        "summary": "Tts Design",
+        "tags": [
+          "tts"
+        ]
+      }
+    },
+    "/v1/tts_voice": {
+      "delete": {
+        "operationId": "tts_voice_delete_v1_tts_voice_delete",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "voice_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Voice Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tts Voice Delete",
+        "tags": [
+          "tts"
+        ]
+      },
+      "post": {
+        "operationId": "tts_voice_v1_tts_voice_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TTSVoiceSaveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
         "summary": "Tts Voice",
+        "tags": [
+          "tts"
+        ]
+      }
+    },
+    "/v1/tts_voices": {
+      "get": {
+        "operationId": "tts_voices_v1_tts_voices_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "provider",
+            "required": false,
+            "schema": {
+              "default": "labs",
+              "enum": [
+                "labs",
+                "elevenlabs"
+              ],
+              "title": "Provider",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tts Voices",
         "tags": [
           "tts"
         ]

@@ -8,7 +8,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Event
-from typing import Any
+from typing import Any, Literal
 
 import anyio
 from mcp.server import Server
@@ -40,6 +40,9 @@ from .errors import (
 )
 from .schemas import (
     ChatRequest,
+    TTSCreateModel,
+    TTSDesignModel,
+    TTSProvider,
     ImageEditMedia,
     ImageEditModel,
     ImageGenerateModel,
@@ -300,32 +303,55 @@ class AudioTranscribeInput(MCPToolInput):
 class TTSCreateInput(MCPToolInput):
     text: str | None = None
     text_file: str | None = None
-    speaker: str = "Ryan"
-    style: str = "Auto"
-    language: str = "Auto"
-    prompt: str = ""
-    seed: int = -1
+    model: TTSCreateModel | None = None
+    voice_id: str | None = None
+    speaker: str | None = None
+    style: str | None = None
+    language: str | None = None
+    prompt: str | None = None
+    seed: int | None = None
     execution: MCPExecutionOptions | None = None
 
 
 class TTSCloneInput(MCPToolInput):
-    audio: str
+    audio: str | None = None
+    voice_id: str | None = None
     text: str | None = None
     text_file: str | None = None
-    language: str = "Auto"
-    seed: int = -1
+    model: Literal["qwen3"] = "qwen3"
+    language: str | None = None
+    seed: int | None = None
+    execution: MCPExecutionOptions | None = None
+
+
+class TTSDesignInput(MCPToolInput):
+    text: str | None = None
+    text_file: str | None = None
+    model: TTSDesignModel = "qwen3"
+    character: str | None = None
+    style: str | None = None
+    language: str | None = None
+    prompt: str | None = None
+    seed: int | None = None
     execution: MCPExecutionOptions | None = None
 
 
 class TTSVoiceInput(MCPToolInput):
-    text: str | None = None
-    text_file: str | None = None
-    character: str = "Female"
-    style: str = "Auto"
-    language: str = "Auto"
-    prompt: str = ""
-    seed: int = -1
-    execution: MCPExecutionOptions | None = None
+    name: str
+    audio: list[str] = Field(default_factory=list)
+    provider: TTSProvider | None = None
+    preview_id: str | None = None
+    description: str = ""
+
+
+class TTSVoicesInput(MCPToolInput):
+    provider: TTSProvider = "labs"
+    offset: int = 0
+    limit: int = 50
+
+
+class TTSDeleteInput(MCPToolInput):
+    voice_id: str
 
 
 class TaskStatusInput(MCPToolInput):
@@ -705,6 +731,8 @@ def create_mcp_server(
         return services_factory().execute_tts_create(
             text=arguments.text,
             text_file=Path(arguments.text_file) if arguments.text_file else None,
+            model=arguments.model,
+            voice_id=arguments.voice_id,
             speaker=arguments.speaker,
             style=arguments.style,
             language=arguments.language,
@@ -719,20 +747,23 @@ def create_mcp_server(
 
         return services_factory().execute_tts_clone(
             audio=arguments.audio,
+            voice_id=arguments.voice_id,
             text=arguments.text,
             text_file=Path(arguments.text_file) if arguments.text_file else None,
+            model=arguments.model,
             language=arguments.language,
             seed=arguments.seed,
             execution=_execution(arguments.execution),
         )
 
-    @registry.tool(TTSVoiceInput, annotations=LOCAL_WRITE)
-    def tts_voice(arguments: TTSVoiceInput) -> Any:
-        """Create speech from text using a character voice."""
+    @registry.tool(TTSDesignInput, annotations=LOCAL_WRITE)
+    def tts_design(arguments: TTSDesignInput) -> Any:
+        """Design voice previews from a description."""
 
-        return services_factory().execute_tts_voice(
+        return services_factory().execute_tts_design(
             text=arguments.text,
             text_file=Path(arguments.text_file) if arguments.text_file else None,
+            model=arguments.model,
             character=arguments.character,
             style=arguments.style,
             language=arguments.language,
@@ -740,6 +771,21 @@ def create_mcp_server(
             seed=arguments.seed,
             execution=_execution(arguments.execution),
         )
+
+    @registry.tool(TTSVoiceInput, annotations=LOCAL_WRITE)
+    def tts_voice(arguments: TTSVoiceInput) -> Any:
+        """Save audio samples or a design preview as a permanent voice."""
+        return services_factory().execute_tts_voice(**arguments.model_dump())
+
+    @registry.tool(TTSVoicesInput, annotations=READ_ONLY)
+    def tts_voices(arguments: TTSVoicesInput) -> Any:
+        """List presets and saved voices for a provider."""
+        return services_factory().list_tts_voices(**arguments.model_dump())
+
+    @registry.tool(TTSDeleteInput, annotations=LOCAL_WRITE)
+    def tts_delete(arguments: TTSDeleteInput) -> Any:
+        """Delete an owned saved voice."""
+        return services_factory().delete_tts_voice(**arguments.model_dump())
 
     @registry.tool(TaskStatusInput, annotations=READ_ONLY)
     def task_status(arguments: TaskStatusInput) -> Any:

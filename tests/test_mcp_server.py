@@ -36,6 +36,9 @@ EXPECTED_TOOLS = {
     "tts_create",
     "tts_clone",
     "tts_voice",
+    "tts_design",
+    "tts_voices",
+    "tts_delete",
     "task_status",
     "task_wait",
     "keywords",
@@ -400,3 +403,84 @@ def test_mcp_serve_cli_command_starts_stdio_server(monkeypatch) -> None:
     assert calls["transport"] == "stdio"
     assert calls["client_id_present"] is True
     assert callable(calls["services_factory"])
+
+
+@respx.mock
+def test_mcp_tts_design_preview_can_be_saved_as_voice() -> None:
+    preview_id = "550e8400-e29b-41d4-a716-446655440000"
+    design = respx.post("https://api.test/v1/tts_design").respond(
+        202, json={"task_id": "task-1", "status": "PENDING"}
+    )
+    card = {"type": "voice", "voice": {"id": preview_id, "name": "Narrator"}}
+    saved = respx.post("https://api.test/v1/tts_voice").respond(201, json=card)
+    services = ApplicationServices.with_client(
+        APIClient(base_url="https://api.test", client_id="id", client_secret="secret")
+    )
+
+    async def call_tools():
+        server = create_mcp_server(lambda: services)
+        async with Client(server) as client:
+            designed = await client.call_tool(
+                "tts_design",
+                {
+                    "model": "eleven_ttv_v3",
+                    "text": "я" * 100,
+                    "prompt": "A calm, deep narrator voice",
+                    "execution": {"wait": False},
+                },
+            )
+            saved_voice = await client.call_tool(
+                "tts_voice",
+                {
+                    "name": "Narrator",
+                    "preview_id": preview_id,
+                },
+            )
+            return designed, saved_voice
+
+    try:
+        designed, saved_voice = asyncio.run(call_tools())
+    finally:
+        services.close()
+    assert designed.is_error is False
+    assert saved_voice.is_error is False
+    assert json.loads(design.calls[0].request.content) == {
+        "model": "eleven_ttv_v3",
+        "text": "я" * 100,
+        "prompt": "A calm, deep narrator voice",
+    }
+    assert json.loads(saved.calls[0].request.content) == {
+        "name": "Narrator",
+        "preview_id": preview_id,
+        "description": "",
+    }
+    assert json.loads(saved_voice.content[0].text) == card
+
+
+@respx.mock
+def test_mcp_tts_create_leaves_default_model_to_api() -> None:
+    route = respx.post("https://api.test/v1/tts_create").respond(
+        202, json={"task_id": "task-1", "status": "PENDING"}
+    )
+    services = ApplicationServices.with_client(
+        APIClient(base_url="https://api.test", client_id="id", client_secret="secret")
+    )
+
+    async def call_tool():
+        server = create_mcp_server(lambda: services)
+        async with Client(server) as client:
+            return await client.call_tool(
+                "tts_create",
+                {
+                    "text": "я" * 201,
+                    "seed": 0,
+                    "execution": {"wait": False},
+                },
+            )
+
+    try:
+        result = asyncio.run(call_tool())
+    finally:
+        services.close()
+    assert result.is_error is False
+    assert json.loads(route.calls[0].request.content) == {"text": "я" * 201, "seed": 0}

@@ -7,7 +7,8 @@ media sources, model limits, enum values, and numeric ranges.
 from __future__ import annotations
 
 import re
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, get_args
+from uuid import UUID
 
 from pydantic import (
     AfterValidator,
@@ -17,6 +18,7 @@ from pydantic import (
     Discriminator,
     Field,
     HttpUrl,
+    field_validator,
     model_validator,
 )
 
@@ -1166,3 +1168,285 @@ class LipsyncImagePayload(BaseModel):
     prompt: str | None = None
     seed: int = -1
     callback_url: str | None = None
+
+
+TTSSpeaker = Literal[
+    "Aiden",
+    "Dylan",
+    "Eric",
+    "Ono_Anna",
+    "Ryan",
+    "Serena",
+    "Sohee",
+    "Uncle_Fu",
+    "Vivian",
+]
+
+
+TTSStyle = Literal[
+    "Auto",
+    "Warm",
+    "Gentle",
+    "Calm",
+    "Cheerful",
+    "Friendly",
+    "Serious",
+    "Sad",
+    "Angry",
+    "Excited",
+    "Soft",
+    "Deep",
+    "Clear",
+    "Emotional",
+    "Dramatic",
+    "Whisper",
+    "Breathy",
+    "Husky",
+    "Authoritative",
+    "Storytelling",
+    "News Anchor",
+    "Documentary",
+    "Customer Support",
+    "Teacher",
+    "Audiobook",
+    "Energetic",
+    "Relaxed",
+    "Playful",
+    "Mysterious",
+    "Romantic",
+    "Inspirational",
+    "Formal",
+    "Casual",
+    "ASMR",
+    "Noir",
+    "Cinematic",
+    "Trailer",
+    "Motivational",
+    "Robotic",
+    "Vintage Radio",
+    "Lullaby",
+    "Comedy",
+    "Interview",
+    "Poetic",
+    "Philosophical",
+    "Sportscaster",
+    "Meditation",
+]
+
+
+TTSCharacter = Literal[
+    "Auto",
+    "Female",
+    "Male",
+    "Young Female",
+    "Young Male",
+    "Girl",
+    "Boy",
+    "Child",
+    "Teen",
+    "Adult",
+    "Senior Female",
+    "Senior Male",
+    "Narrator",
+    "Announcer",
+]
+
+
+TTSLanguage = Literal[
+    "Auto",
+    "Chinese",
+    "English",
+    "Japanese",
+    "Korean",
+    "French",
+    "German",
+    "Spanish",
+    "Portuguese",
+    "Russian",
+    "Italian",
+]
+
+
+TTSCreateModel = Literal[
+    "qwen3",
+    "eleven_v4",
+    "eleven_v4_turbo",
+    "eleven_v3",
+    "eleven_v3_conversational",
+    "eleven_multilingual_v2",
+    "eleven_flash_v2_5",
+]
+TTSDesignModel = Literal["qwen3", "eleven_multilingual_ttv_v2", "eleven_ttv_v3"]
+TTSProvider = Literal["labs", "elevenlabs"]
+
+
+class _TTSPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    callback_url: HttpUrl | None = None
+
+
+class _QwenTTSPayload(_TTSPayload):
+    text: str = Field(min_length=1, max_length=200)
+    language: TTSLanguage = "Auto"
+    seed: int = -1
+
+    @field_validator(
+        "language", "speaker", "style", "character", mode="before", check_fields=False
+    )
+    @classmethod
+    def normalize_enum(cls, value: Any, info: Any) -> Any:
+        choices = {
+            "language": TTSLanguage,
+            "speaker": TTSSpeaker,
+            "style": TTSStyle,
+            "character": TTSCharacter,
+        }
+        for choice in get_args(choices[info.field_name]):
+            if str(value).lower() in {choice.lower(), choice.lower().replace(" ", "_")}:
+                return choice
+        return value
+
+
+class TTSDefaultCreatePayload(_TTSPayload):
+    """Validate shared inputs while the API chooses the model and its defaults."""
+
+    text: str = Field(min_length=1)
+    voice_id: UUID | None = None
+    speaker: str | None = None
+    style: str | None = None
+    language: str | None = None
+    prompt: str | None = None
+    seed: int | None = None
+
+
+class QwenTTSCreatePayload(_QwenTTSPayload):
+    model: Literal["qwen3"] = "qwen3"
+    speaker: TTSSpeaker = "Ryan"
+    style: TTSStyle = "Auto"
+    prompt: str = Field(default="", max_length=1000)
+
+
+class ElevenLabsTTSCreatePayload(_TTSPayload):
+    model: Literal[
+        "eleven_v4",
+        "eleven_v4_turbo",
+        "eleven_v3",
+        "eleven_v3_conversational",
+        "eleven_multilingual_v2",
+        "eleven_flash_v2_5",
+    ]
+    text: str = Field(min_length=1, max_length=2048)
+    voice_id: UUID
+
+
+def validate_tts_media(value: str) -> str:
+    if value.startswith(("http://", "https://")):
+        return value
+    if re.fullmatch(
+        r"data:(audio|video)/[a-zA-Z0-9.+\-]+;base64,[A-Za-z0-9+/]+=*", value
+    ):
+        return value
+    raise ValueError("Audio must be an HTTP(S) URL or a base64 media data URI")
+
+
+class TTSClonePayload(_QwenTTSPayload):
+    model: Literal["qwen3"]
+    audio_url: str | None = None
+    voice_id: UUID | None = None
+
+    @field_validator("audio_url")
+    @classmethod
+    def validate_audio(cls, value: str | None) -> str | None:
+        return validate_tts_media(value) if value is not None else None
+
+    @model_validator(mode="after")
+    def validate_reference(self) -> "TTSClonePayload":
+        if (self.audio_url is None) == (self.voice_id is None):
+            raise ValueError("Provide exactly one of --audio or --voice-id")
+        return self
+
+
+class QwenTTSDesignPayload(_QwenTTSPayload):
+    model: Literal["qwen3"]
+    character: TTSCharacter = "Female"
+    style: TTSStyle = "Auto"
+    prompt: str = Field(default="", max_length=1000)
+
+
+class ElevenLabsTTSDesignPayload(_TTSPayload):
+    model: Literal["eleven_multilingual_ttv_v2", "eleven_ttv_v3"]
+    text: str = Field(min_length=100, max_length=1000)
+    prompt: str = Field(min_length=20, max_length=1000)
+
+
+TTS_CREATE_PAYLOADS: dict[str, type[BaseModel]] = {
+    "qwen3": QwenTTSCreatePayload,
+    **dict.fromkeys(
+        (
+            "eleven_v4",
+            "eleven_v4_turbo",
+            "eleven_v3",
+            "eleven_v3_conversational",
+            "eleven_multilingual_v2",
+            "eleven_flash_v2_5",
+        ),
+        ElevenLabsTTSCreatePayload,
+    ),
+}
+TTS_DESIGN_PAYLOADS: dict[str, type[BaseModel]] = {
+    "qwen3": QwenTTSDesignPayload,
+    "eleven_multilingual_ttv_v2": ElevenLabsTTSDesignPayload,
+    "eleven_ttv_v3": ElevenLabsTTSDesignPayload,
+}
+
+
+class TTSVoiceSavePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=1, max_length=100)
+    description: str = Field(default="", max_length=1000)
+    provider: TTSProvider | None = "labs"
+    audio_urls: list[str] | None = Field(default=None, min_length=1, max_length=10)
+    preview_id: UUID | None = None
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Voice name cannot be blank")
+        return value.strip()
+
+    @field_validator("audio_urls")
+    @classmethod
+    def validate_samples(cls, value: list[str] | None) -> list[str] | None:
+        if value is not None:
+            for url in value:
+                validate_tts_media(url)
+                if not url.startswith("data:") and len(url) > 2048:
+                    raise ValueError("Sample URL must contain at most 2048 characters")
+        return value
+
+    @model_validator(mode="after")
+    def validate_source(self) -> "TTSVoiceSavePayload":
+        if self.preview_id is not None:
+            if (
+                self.provider is not None and "provider" in self.model_fields_set
+            ) or self.audio_urls is not None:
+                raise ValueError("Provide --preview-id without --provider or --audio")
+            self.provider = None
+        elif self.provider is None or self.audio_urls is None:
+            raise ValueError("Provide --preview-id or audio samples")
+        elif self.provider == "labs" and len(self.audio_urls) != 1:
+            raise ValueError("Qwen requires exactly one audio reference")
+        return self
+
+
+class TTSVoicesPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    provider: TTSProvider = "labs"
+    offset: int = Field(default=0, ge=0)
+    limit: int = Field(default=50, ge=1, le=100)
+
+
+class TTSVoiceDeletePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    voice_id: UUID

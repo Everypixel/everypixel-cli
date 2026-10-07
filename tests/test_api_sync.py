@@ -7,6 +7,12 @@ from everypixel_cli.schemas import (
     ImageEditModel,
     ImageGenerateModel,
     VideoGenerateModel,
+    TTSCreateModel,
+    TTSDesignModel,
+    TTSSpeaker,
+    TTSStyle,
+    TTSLanguage,
+    TTSCharacter,
 )
 
 
@@ -227,5 +233,62 @@ def test_bundled_openapi_has_current_dev_endpoints_and_content_refs():
         "1440p",
         "4k",
     ]
-    for name in ("TTSCreateRequest", "TTSCloneRequest", "TTSVoiceRequest"):
-        assert components[name]["properties"]["text"]["maxLength"] == 200
+
+
+def test_bundled_tts_contract_matches_local_models():
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    components = schema["components"]["schemas"]
+    for name, limit in (
+        ("TTSCreateRequest", 2048),
+        ("TTSCloneRequest", 200),
+        ("QwenTTSDesignRequest", 200),
+        ("ElevenLabsVoiceDesignRequest", 1000),
+    ):
+        assert components[name]["properties"]["text"]["maxLength"] == limit
+    assert set(components["TTSCreateRequest"]["properties"]["model"]["enum"]) == set(
+        get_args(TTSCreateModel)
+    )
+    assert components["TTSCreateRequest"]["properties"]["model"]["enum"] == [
+        "qwen3",
+        "eleven_v4",
+        "eleven_v4_turbo",
+        "eleven_v3",
+        "eleven_v3_conversational",
+        "eleven_multilingual_v2",
+        "eleven_flash_v2_5",
+    ]
+    assert set(
+        components["ElevenLabsVoiceDesignRequest"]["properties"]["model"]["enum"]
+    ) | {"qwen3"} == set(get_args(TTSDesignModel))
+    for name, local in (
+        ("TTSSpeakerEnum", TTSSpeaker),
+        ("TTSStyleEnum", TTSStyle),
+        ("TTSLanguageEnum", TTSLanguage),
+        ("TTSCharacterEnum", TTSCharacter),
+    ):
+        assert components[name]["enum"] == list(get_args(local))
+    assert "TTSVoiceSaveRequest" in components
+    for path, method, operation in (
+        ("tts_create", "post", "tts_create"),
+        ("tts_clone", "post", "tts_clone"),
+        ("tts_design", "post", "tts_design"),
+        ("tts_voice", "post", "tts_voice"),
+        ("tts_voice", "delete", "tts_voice_delete"),
+        ("tts_voices", "get", "tts_voices"),
+    ):
+        assert (
+            schema["paths"][f"/v1/{path}"][method]["operationId"]
+            == f"{operation}_v1_{path}_{method}"
+        )
+
+    design = schema["paths"]["/v1/tts_design"]["post"]["requestBody"]["content"][
+        "application/json"
+    ]["schema"]
+    assert design["anyOf"] == [
+        {"$ref": "#/components/schemas/QwenTTSDesignRequest"},
+        {"$ref": "#/components/schemas/ElevenLabsVoiceDesignRequest"},
+    ]
+    assert components["TTSCloneRequest"]["required"] == ["model", "text"]
+    assert schema["paths"]["/v1/tts_voice"]["post"]["requestBody"]["content"][
+        "application/json"
+    ]["schema"] == {"$ref": "#/components/schemas/TTSVoiceSaveRequest"}

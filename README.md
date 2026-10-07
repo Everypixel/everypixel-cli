@@ -229,9 +229,12 @@ They support 4K output. The default `seedvr2` supports up to 1440p, with a
 | `everypixel lipsync video` | Synchronize a video with an audio track |
 | `everypixel lipsync image` | Create a lipsync video from a still image and audio |
 | `everypixel audio transcribe` | Transcribe speech from an audio file |
-| `everypixel audio tts-create` | Create speech with a built-in speaker |
-| `everypixel audio tts-clone` | Create speech from a cloned voice sample |
-| `everypixel audio tts-voice` | Create speech with a character voice |
+| `everypixel audio tts-create` | Create speech with a Qwen preset or saved ElevenLabs voice |
+| `everypixel audio tts-clone` | Create Qwen speech from an audio sample or saved voice |
+| `everypixel audio tts-design` | Design voice previews from a description |
+| `everypixel audio tts-voice` | Save audio samples or a design preview as a voice |
+| `everypixel audio tts-voices` | List presets and saved voices |
+| `everypixel audio tts-delete` | Delete an owned saved voice |
 
 Lipsync supports 720p; the API checks source media dimensions and duration.
 
@@ -255,6 +258,25 @@ everypixel audio tts-create \
   --language English \
   --download ./outputs
 ```
+
+`tts-create` lets the API choose the model when `--model` is omitted.
+`tts-clone` and `tts-design` default to `--model qwen3`.
+`--speaker`, `--style`, `--language`, and `--seed` are Qwen controls; `--character` applies only to Qwen voice design.
+Qwen text is limited to 200 characters. ElevenLabs synthesis accepts up to
+2048 characters and requires `--voice-id`. Supported synthesis models are
+`eleven_v4`, `eleven_v4_turbo`, `eleven_v3`, `eleven_v3_conversational`,
+`eleven_multilingual_v2`, and `eleven_flash_v2_5`. ElevenLabs design uses
+`eleven_multilingual_ttv_v2` or `eleven_ttv_v3`, with 100–1000 characters of
+text and a 20–1000 character `--prompt`.
+
+Save a returned preview with `tts-voice --name "Narrator" --preview-id UUID`, or save local
+samples with `tts-voice --name "My voice" --provider elevenlabs --audio ./sample.wav`.
+`--audio` is repeatable for ElevenLabs; Qwen (`--provider labs`, the default)
+requires one sample. Saving returns a voice card immediately. Use its ID with
+`tts-create --model eleven_v3 --voice-id UUID --text "Hello"` or
+`tts-clone --voice-id UUID --text "Hello"`. List voices with
+`tts-voices --provider elevenlabs --offset 0 --limit 50`, and delete an owned
+voice with `tts-delete --voice-id UUID`.
 
 ### Chat
 

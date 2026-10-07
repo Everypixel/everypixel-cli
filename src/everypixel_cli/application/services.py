@@ -34,6 +34,13 @@ from ..openapi import (
 )
 from ..schemas import (
     ChatRequest,
+    TTS_CREATE_PAYLOADS,
+    TTS_DESIGN_PAYLOADS,
+    TTSClonePayload,
+    TTSDefaultCreatePayload,
+    TTSVoiceSavePayload,
+    TTSVoicesPayload,
+    TTSVoiceDeletePayload,
     GPT_IMAGE_MODEL_QUALITIES,
     ImageEditPayload,
     ImageGeneratePayload,
@@ -240,11 +247,14 @@ class OperationService:
     def execute(self, request: OperationRequest) -> OperationResult:
         method = request.method.upper()
         payload = dict(request.payload)
+        use_query = method == "GET" or (
+            method == "DELETE" and request.endpoint == "/v1/tts_voice"
+        )
         response = self.client.request(
             method,
             request.endpoint,
-            json=payload if method != "GET" else None,
-            params=payload if method == "GET" else None,
+            json=None if use_query else payload,
+            params=payload if use_query else None,
         )
         if not isinstance(response, Mapping) or "task_id" not in response:
             return OperationResult(value=response)
@@ -753,33 +763,64 @@ def read_text_input(text: str | None, text_file: Path | None) -> str:
     return text
 
 
+def validate_tts_payload(
+    path: str, values: dict[str, Any], *, generic: bool = False
+) -> BaseModel:
+    """Select a provider schema without dropping unsupported controls."""
+    if generic:
+        schemas: list[type[BaseModel]] = [
+            *TTS_CREATE_PAYLOADS.values(),
+            *TTS_DESIGN_PAYLOADS.values(),
+            TTSClonePayload,
+            TTSDefaultCreatePayload,
+        ]
+        known_fields = {field for schema in schemas for field in schema.model_fields}
+        values = {key: value for key, value in values.items() if key in known_fields}
+    if path == "/v1/tts_create" and "model" not in values:
+        return TTSDefaultCreatePayload.model_validate(values)
+    registries = {
+        "/v1/tts_create": TTS_CREATE_PAYLOADS,
+        "/v1/tts_design": TTS_DESIGN_PAYLOADS,
+    }
+    if path in registries:
+        model = values.get("model", "qwen3")
+        schema = registries[path].get(model) if isinstance(model, str) else None
+        if schema is None:
+            raise ValidationCLIError("Unsupported TTS model")
+        return schema.model_validate(values)
+    return TTSClonePayload.model_validate(values)
+
+
+def _build_tts_payload(path: str, values: dict[str, Any]) -> dict[str, Any]:
+    text = values.pop("text")
+    text_file = values.pop("text_file")
+    values = {key: value for key, value in values.items() if value is not None}
+    values["text"] = read_text_input(text, text_file)
+    return validate_tts_payload(path, values).model_dump(mode="json", exclude_none=True)
+
+
 def build_tts_create_payload(**values: Any) -> dict[str, Any]:
-    """Build a text-to-speech creation request."""
-
-    text = values.pop("text")
-    text_file = values.pop("text_file")
-    return {"text": read_text_input(text, text_file), **values}
+    return _build_tts_payload("/v1/tts_create", values)
 
 
-def build_tts_voice_payload(**values: Any) -> dict[str, Any]:
-    """Build a character voice text-to-speech request."""
-
-    text = values.pop("text")
-    text_file = values.pop("text_file")
-    return {"text": read_text_input(text, text_file), **values}
+def build_tts_design_payload(**values: Any) -> dict[str, Any]:
+    return _build_tts_payload("/v1/tts_design", values)
 
 
 def build_tts_clone_payload(**values: Any) -> dict[str, Any]:
-    """Build a cloned-voice text-to-speech request."""
-
     audio = values.pop("audio")
-    text = values.pop("text")
-    text_file = values.pop("text_file")
-    return {
-        "audio_url": media_value(audio),
-        "text": read_text_input(text, text_file),
-        **values,
-    }
+    if audio is not None:
+        values["audio_url"] = media_value(audio)
+    return _build_tts_payload("/v1/tts_clone", values)
+
+
+def build_tts_voice_payload(**values: Any) -> dict[str, Any]:
+    audio = values.pop("audio")
+    if audio:
+        values["audio_urls"] = [media_value(sample) for sample in audio]
+    return TTSVoiceSavePayload.model_validate(
+        {key: value for key, value in values.items() if value is not None}
+    ).model_dump(mode="json", exclude_none=True)
 
 
 @dataclass
@@ -1147,25 +1188,28 @@ class ApplicationServices:
         *,
         text: str | None,
         text_file: Path | None,
-        speaker: str,
-        style: str,
-        language: str,
-        prompt: str,
-        seed: int,
         execution: ExecutionOptions,
+        model: str | None = None,
+        voice_id: str | None = None,
+        speaker: str | None = None,
+        style: str | None = None,
+        language: str | None = None,
+        prompt: str | None = None,
+        seed: int | None = None,
     ) -> OperationResult:
-        payload = build_tts_create_payload(
-            text=text,
-            text_file=text_file,
-            speaker=speaker,
-            style=style,
-            language=language,
-            prompt=prompt,
-            seed=seed,
-        )
         return self._execute_async(
             endpoint="/v1/tts_create",
-            payload=payload,
+            payload=build_tts_create_payload(
+                text=text,
+                text_file=text_file,
+                model=model,
+                voice_id=voice_id,
+                speaker=speaker,
+                style=style,
+                language=language,
+                prompt=prompt,
+                seed=seed,
+            ),
             execution=execution,
             fallback_extension=".mp3",
         )
@@ -1173,23 +1217,55 @@ class ApplicationServices:
     def execute_tts_clone(
         self,
         *,
-        audio: str,
         text: str | None,
         text_file: Path | None,
-        language: str,
-        seed: int,
         execution: ExecutionOptions,
+        audio: str | None = None,
+        voice_id: str | None = None,
+        model: str = "qwen3",
+        language: str | None = None,
+        seed: int | None = None,
     ) -> OperationResult:
-        payload = build_tts_clone_payload(
-            audio=audio,
-            text=text,
-            text_file=text_file,
-            language=language,
-            seed=seed,
-        )
         return self._execute_async(
             endpoint="/v1/tts_clone",
-            payload=payload,
+            payload=build_tts_clone_payload(
+                audio=audio,
+                text=text,
+                text_file=text_file,
+                voice_id=voice_id,
+                model=model,
+                language=language,
+                seed=seed,
+            ),
+            execution=execution,
+            fallback_extension=".mp3",
+        )
+
+    def execute_tts_design(
+        self,
+        *,
+        text: str | None,
+        text_file: Path | None,
+        execution: ExecutionOptions,
+        model: str = "qwen3",
+        character: str | None = None,
+        style: str | None = None,
+        language: str | None = None,
+        prompt: str | None = None,
+        seed: int | None = None,
+    ) -> OperationResult:
+        return self._execute_async(
+            endpoint="/v1/tts_design",
+            payload=build_tts_design_payload(
+                text=text,
+                text_file=text_file,
+                model=model,
+                character=character,
+                style=style,
+                language=language,
+                prompt=prompt,
+                seed=seed,
+            ),
             execution=execution,
             fallback_extension=".mp3",
         )
@@ -1197,29 +1273,55 @@ class ApplicationServices:
     def execute_tts_voice(
         self,
         *,
-        text: str | None,
-        text_file: Path | None,
-        character: str,
-        style: str,
-        language: str,
-        prompt: str,
-        seed: int,
-        execution: ExecutionOptions,
+        name: str,
+        audio: list[str],
+        provider: str | None = None,
+        preview_id: str | None = None,
+        description: str = "",
     ) -> OperationResult:
-        payload = build_tts_voice_payload(
-            text=text,
-            text_file=text_file,
-            character=character,
-            style=style,
-            language=language,
-            prompt=prompt,
-            seed=seed,
+        return self._operations.execute(
+            OperationRequest(
+                endpoint="/v1/tts_voice",
+                method="POST",
+                payload=build_tts_voice_payload(
+                    name=name,
+                    audio=audio,
+                    provider=provider,
+                    preview_id=preview_id,
+                    description=description,
+                ),
+                execution=ExecutionOptions(),
+            )
         )
-        return self._execute_async(
-            endpoint="/v1/tts_voice",
-            payload=payload,
-            execution=execution,
-            fallback_extension=".mp3",
+
+    def list_tts_voices(
+        self,
+        *,
+        provider: str = "labs",
+        offset: int = 0,
+        limit: int = 50,
+    ) -> OperationResult:
+        return self._operations.execute(
+            OperationRequest(
+                endpoint="/v1/tts_voices",
+                method="GET",
+                payload=TTSVoicesPayload.model_validate(
+                    {"provider": provider, "offset": offset, "limit": limit}
+                ).model_dump(),
+                execution=ExecutionOptions(),
+            )
+        )
+
+    def delete_tts_voice(self, *, voice_id: str) -> OperationResult:
+        return self._operations.execute(
+            OperationRequest(
+                endpoint="/v1/tts_voice",
+                method="DELETE",
+                payload=TTSVoiceDeletePayload.model_validate(
+                    {"voice_id": voice_id}
+                ).model_dump(mode="json"),
+                execution=ExecutionOptions(),
+            )
         )
 
     def execute_chat(
@@ -1340,6 +1442,19 @@ class ApplicationServices:
             _VIDEO_EDIT_ADAPTER.validate_python(payload, extra="ignore")
         if path == "/v1/chat/completions":
             ChatRequest.model_validate(payload, extra="ignore")
+        if resolved_method == "POST" and path in {
+            "/v1/tts_create",
+            "/v1/tts_clone",
+            "/v1/tts_design",
+        }:
+            validate_tts_payload(path, payload, generic=True)
+        if path == "/v1/tts_voice":
+            if resolved_method == "POST":
+                TTSVoiceSavePayload.model_validate(payload)
+            elif resolved_method == "DELETE":
+                TTSVoiceDeletePayload.model_validate(payload)
+        if path == "/v1/tts_voices" and resolved_method == "GET":
+            TTSVoicesPayload.model_validate(payload)
         validate_payload_against_operation(operation, payload)
         if dry_run:
             return OperationResult(

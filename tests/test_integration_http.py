@@ -251,10 +251,10 @@ def test_vector_images_download_svg(mode, monkeypatch, make_temp_dir):
         assert "resolution" not in body
 
 
-@pytest.mark.parametrize("command", ["tts-create", "tts-clone", "tts-voice"])
+@pytest.mark.parametrize("command", ["tts-create", "tts-clone", "tts-design"])
 @pytest.mark.parametrize("source", ["text", "file", "generic"])
 @respx.mock
-def test_tts_sends_full_text_without_local_limit(
+def test_tts_preserves_text_and_rejects_qwen_over_limit(
     command, source, monkeypatch, make_temp_dir
 ):
     route = mock_async_post(f"/v1/{command.replace('-', '_')}")
@@ -274,18 +274,40 @@ def test_tts_sends_full_text_without_local_limit(
                 "--input",
                 f"text={text}",
                 "--input",
-                "audio_url=https://cdn.test/audio.mp3",
+                "model=qwen3",
+                *(
+                    ["--input", "audio_url=https://cdn.test/audio.mp3"]
+                    if command == "tts-clone"
+                    else []
+                ),
             ]
         if source == "file":
             path = folder / "text.txt"
             path.write_text(text, encoding="utf-8")
-            return ["audio", command, *audio, "--text-file", str(path)]
-        return ["audio", command, *audio, "--text", text]
+            return [
+                "audio",
+                command,
+                "--model",
+                "qwen3",
+                *audio,
+                "--text-file",
+                str(path),
+            ]
+        return ["audio", command, "--model", "qwen3", *audio, "--text", text]
 
     folder = make_temp_dir("tts-text")
-    text = "я" * 200 + " "
+    text = "я" * 199 + " "
     invoke_json(arguments(text), monkeypatch)
     assert request_json(route)["text"] == text
+    assert route.call_count == 1
+
+    result = runner.invoke(
+        app,
+        ["--base-url", "https://api.test", "-j", "--no-wait", *arguments(text + "я")],
+    )
+    assert result.exit_code == 2
+    assert json.loads(result.stdout)["error"]["code"] == "validation_error"
+    assert result.stderr == ""
     assert route.call_count == 1
 
 
@@ -1710,23 +1732,24 @@ def test_tts_create_payload(monkeypatch):
             "--text",
             "Hello",
             "--speaker",
-            "Female",
+            "ryan",
             "--style",
             "Warm",
             "--language",
-            "en",
+            "English",
         ],
         monkeypatch,
     )
 
     assert request_json(route) == {
         "text": "Hello",
-        "speaker": "Female",
+        "speaker": "ryan",
         "style": "Warm",
-        "language": "en",
-        "prompt": "",
-        "seed": -1,
+        "language": "English",
     }
+
+    invoke_json(["audio", "tts-create", "--text", "я" * 201], monkeypatch)
+    assert json.loads(route.calls[1].request.content) == {"text": "я" * 201}
 
 
 @respx.mock
@@ -1742,27 +1765,28 @@ def test_tts_clone_payload(monkeypatch):
             "--text",
             "Hello",
             "--language",
-            "en",
+            "English",
         ],
         monkeypatch,
     )
 
     assert request_json(route) == {
         "audio_url": "https://cdn.test/sample.mp3",
+        "model": "qwen3",
         "text": "Hello",
-        "language": "en",
+        "language": "English",
         "seed": -1,
     }
 
 
 @respx.mock
-def test_tts_voice_payload(monkeypatch):
-    route = mock_async_post("/v1/tts_voice")
+def test_tts_design_payload(monkeypatch):
+    route = mock_async_post("/v1/tts_design")
 
     invoke_json(
         [
             "audio",
-            "tts-voice",
+            "tts-design",
             "--text",
             "Hello",
             "--character",
@@ -1770,16 +1794,348 @@ def test_tts_voice_payload(monkeypatch):
             "--style",
             "Storytelling",
             "--language",
-            "en",
+            "English",
         ],
         monkeypatch,
     )
 
     assert request_json(route) == {
+        "model": "qwen3",
         "text": "Hello",
         "character": "Narrator",
         "style": "Storytelling",
-        "language": "en",
+        "language": "English",
         "prompt": "",
         "seed": -1,
     }
+
+
+VOICE_ID = "550e8400-e29b-41d4-a716-446655440000"
+
+
+@pytest.mark.parametrize(
+    ("operation", "model"),
+    [
+        ("create", "eleven_v4"),
+        ("create", "eleven_v4_turbo"),
+        ("create", "eleven_v3"),
+        ("create", "eleven_v3_conversational"),
+        ("create", "eleven_multilingual_v2"),
+        ("create", "eleven_flash_v2_5"),
+        ("design", "eleven_ttv_v3"),
+    ],
+)
+@respx.mock
+def test_elevenlabs_tts_specialized_and_generic_payloads(operation, model, monkeypatch):
+    path = f"/v1/tts_{operation}"
+    route = mock_async_post(path)
+    if operation == "create":
+        payload = {"model": model, "voice_id": VOICE_ID, "text": "я" * 2048}
+    else:
+        payload = {
+            "model": model,
+            "text": "я" * 100,
+            "prompt": "A calm, deep narrator voice",
+        }
+    arguments = ["audio", f"tts-{operation}"]
+    for key, value in payload.items():
+        arguments.extend([f"--{key.replace('_', '-')}", value])
+    invoke_json(arguments, monkeypatch)
+    assert request_json(route) == payload
+    generic = ["run", path]
+    for key, value in payload.items():
+        generic.extend(["--input", f"{key}={value}"])
+    generic.extend(["--input", "future_option=false"])
+    invoke_json(generic, monkeypatch)
+    assert json.loads(route.calls[1].request.content) == {
+        **payload,
+        "future_option": False,
+    }
+
+
+@respx.mock
+def test_tts_clone_saved_reference(monkeypatch):
+    route = mock_async_post("/v1/tts_clone")
+    invoke_json(
+        [
+            "audio",
+            "tts-clone",
+            "--voice-id",
+            VOICE_ID,
+            "--text",
+            "Hello",
+            "--seed",
+            "0",
+        ],
+        monkeypatch,
+    )
+    assert request_json(route) == {
+        "model": "qwen3",
+        "text": "Hello",
+        "voice_id": VOICE_ID,
+        "language": "Auto",
+        "seed": 0,
+    }
+
+
+@pytest.mark.parametrize("source", ["labs", "elevenlabs", "preview"])
+@respx.mock
+def test_tts_voice_save_returns_synchronous_card(source, monkeypatch):
+    card = {"type": "voice", "voice": {"id": VOICE_ID, "name": "Narrator"}}
+    route = respx.post("https://api.test/v1/tts_voice").respond(201, json=card)
+    arguments = ["audio", "tts-voice", "--name", "Narrator"]
+    if source == "preview":
+        arguments.extend(["--preview-id", VOICE_ID])
+    else:
+        arguments.extend(["--audio", str(FIXTURES / "result-2.mp3")])
+        if source == "elevenlabs":
+            arguments.extend(
+                ["--provider", source, "--audio", "https://cdn.test/sample.wav"]
+            )
+    assert invoke_json(arguments, monkeypatch) == card
+    body = request_json(route)
+    if source == "preview":
+        assert body == {"name": "Narrator", "description": "", "preview_id": VOICE_ID}
+    else:
+        assert body["provider"] == source
+        assert body["audio_urls"][0].startswith("data:audio/mpeg;base64,")
+        assert len(body["audio_urls"]) == (2 if source == "elevenlabs" else 1)
+    assert len(respx.calls) == 1
+
+
+@respx.mock
+def test_tts_voice_catalog_and_delete_use_query_parameters(monkeypatch):
+    catalog = respx.get("https://api.test/v1/tts_voices").respond(
+        200, json={"voices": [], "next_offset": None}
+    )
+    deleted = respx.delete("https://api.test/v1/tts_voice").respond(
+        200, json={"type": "voice_deleted", "voice_id": VOICE_ID}
+    )
+    invoke_json(
+        [
+            "audio",
+            "tts-voices",
+            "--provider",
+            "elevenlabs",
+            "--offset",
+            "50",
+            "--limit",
+            "10",
+        ],
+        monkeypatch,
+    )
+    assert dict(catalog.calls[0].request.url.params) == {
+        "provider": "elevenlabs",
+        "offset": "50",
+        "limit": "10",
+    }
+    assert catalog.calls[0].request.content == b""
+    for args in (
+        ["audio", "tts-delete", "--voice-id", VOICE_ID],
+        [
+            "run",
+            "/v1/tts_voice",
+            "--method",
+            "DELETE",
+            "--input",
+            f"voice_id={VOICE_ID}",
+        ],
+    ):
+        assert invoke_json(args, monkeypatch) == {
+            "type": "voice_deleted",
+            "voice_id": VOICE_ID,
+        }
+    for call in deleted.calls:
+        assert dict(call.request.url.params) == {"voice_id": VOICE_ID}
+        assert call.request.content == b""
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["audio", "tts-create", "--model", "eleven_v3", "--text", "Hello"],
+        [
+            "audio",
+            "tts-create",
+            "--model",
+            "eleven_flash_v2",
+            "--voice-id",
+            VOICE_ID,
+            "--text",
+            "Hello",
+        ],
+        [
+            "audio",
+            "tts-create",
+            "--model",
+            "eleven_v3",
+            "--voice-id",
+            VOICE_ID,
+            "--speaker",
+            "Ryan",
+            "--text",
+            "Hello",
+        ],
+        [
+            "audio",
+            "tts-create",
+            "--model",
+            "qwen3",
+            "--voice-id",
+            VOICE_ID,
+            "--text",
+            "Hello",
+        ],
+        ["audio", "tts-clone", "--text", "Hello"],
+        [
+            "audio",
+            "tts-clone",
+            "--audio",
+            "https://cdn.test/sample.mp3",
+            "--voice-id",
+            VOICE_ID,
+            "--text",
+            "Hello",
+        ],
+        [
+            "audio",
+            "tts-clone",
+            "--model",
+            "eleven_v3",
+            "--audio",
+            "https://cdn.test/sample.mp3",
+            "--text",
+            "Hello",
+        ],
+        [
+            "audio",
+            "tts-design",
+            "--model",
+            "eleven_ttv_v3",
+            "--text",
+            "я" * 100,
+            "--prompt",
+            "short",
+        ],
+        [
+            "audio",
+            "tts-design",
+            "--model",
+            "eleven_ttv_v3",
+            "--text",
+            "я" * 100,
+            "--prompt",
+            "A calm, deep narrator voice",
+            "--seed",
+            "0",
+        ],
+        [
+            "audio",
+            "tts-voice",
+            "--name",
+            "Narrator",
+            "--preview-id",
+            VOICE_ID,
+            "--provider",
+            "labs",
+        ],
+        [
+            "audio",
+            "tts-voice",
+            "--name",
+            "Narrator",
+            "--audio",
+            "https://cdn.test/a.wav",
+            "--audio",
+            "https://cdn.test/b.wav",
+        ],
+        ["audio", "tts-delete", "--voice-id", "invalid"],
+        ["audio", "tts-voices", "--limit", "101"],
+        [
+            "run",
+            "/v1/tts_create",
+            "--input",
+            "model=eleven_v3",
+            "--input",
+            f"voice_id={VOICE_ID}",
+            "--input",
+            "text=Hello",
+            "--input",
+            "seed=0",
+        ],
+        ["run", "/v1/tts_create", "--input", "model=[]", "--input", "text=Hello"],
+    ],
+)
+@respx.mock
+def test_invalid_tts_requests_fail_before_http(args, monkeypatch):
+    monkeypatch.setenv("EVERYPIXEL_CLIENT_ID", "id")
+    monkeypatch.setenv("EVERYPIXEL_CLIENT_SECRET", "secret")
+    result = runner.invoke(
+        app, ["--base-url", "https://api.test", "-j", "--no-wait", *args]
+    )
+    assert result.exit_code == 2, result.output
+    assert json.loads(result.stdout)["error"]["code"] == "validation_error"
+    assert result.stderr == ""
+    assert len(respx.calls) == 0
+
+
+@respx.mock
+def test_tts_design_downloads_all_previews_after_success(monkeypatch, make_temp_dir):
+    monkeypatch.setenv("EVERYPIXEL_CLIENT_ID", "id")
+    monkeypatch.setenv("EVERYPIXEL_CLIENT_SECRET", "secret")
+    folder = make_temp_dir("tts-design-download")
+    mock_async_post("/v1/tts_design")
+    status = respx.get("https://api.test/v1/status").mock(
+        side_effect=[
+            httpx.Response(200, json={"task_id": "abc", "status": "PROCESSING"}),
+            httpx.Response(
+                200,
+                json={
+                    "task_id": "abc",
+                    "status": "SUCCESS",
+                    "result": {
+                        "type": "voice_design",
+                        "text": "Preview text",
+                        "previews": [
+                            {
+                                "preview_id": VOICE_ID,
+                                "audio_url": "https://cdn.test/preview-a",
+                            },
+                            {
+                                "preview_id": VOICE_ID,
+                                "audio_url": "https://cdn.test/preview-b",
+                            },
+                        ],
+                    },
+                },
+            ),
+        ]
+    )
+    downloads = [
+        respx.get(f"https://cdn.test/preview-{letter}").respond(200, content=b"audio")
+        for letter in "ab"
+    ]
+    result = runner.invoke(
+        app,
+        [
+            "--base-url",
+            "https://api.test",
+            "-j",
+            "--no-wait",
+            "--poll-interval",
+            "0.01",
+            "audio",
+            "tts-design",
+            "--text",
+            "Hello",
+            "--download",
+            str(folder),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert status.call_count == 2
+    assert all(route.call_count == 1 for route in downloads)
+    assert len(list(folder.glob("*.mp3"))) == 2
+    assert [call.request.url.host for call in respx.calls] == ["api.test"] * 3 + [
+        "cdn.test"
+    ] * 2

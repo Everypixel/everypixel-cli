@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.0] - 2026-10-07
+
+- Add ElevenLabs speech synthesis and voice design.
+- Add saved voice creation, listing, deletion, and Qwen cloning by voice ID.
+
 ## [0.3.0] - 2026-09-18
 
 - Add GPT Image 2.5 Sunburst and quality selection for GPT Image models.

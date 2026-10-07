@@ -1285,17 +1285,19 @@ def tts_create(
     ctx: typer.Context,
     text: Annotated[Optional[str], typer.Option("--text")] = None,
     text_file: Annotated[Optional[Path], typer.Option("--text-file")] = None,
-    speaker: str = "Ryan",
-    style: str = "Auto",
-    language: str = "Auto",
-    prompt: str = "",
-    seed: int = -1,
+    model: Optional[str] = None,
+    voice_id: Optional[str] = None,
+    speaker: Optional[str] = None,
+    style: Optional[str] = None,
+    language: Optional[str] = None,
+    prompt: Optional[str] = None,
+    seed: Optional[int] = None,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
     output_json: OutputJsonOption = False,
     jq_expr: JqOption = None,
 ) -> None:
-    """Create speech from text using a selected speaker."""
+    """Create speech using Qwen presets or a saved ElevenLabs voice."""
 
     runtime = apply_common_options(
         ctx,
@@ -1309,6 +1311,8 @@ def tts_create(
         lambda: runtime.services().execute_tts_create(
             text=text,
             text_file=text_file,
+            model=model,
+            voice_id=voice_id,
             speaker=speaker,
             style=style,
             language=language,
@@ -1322,11 +1326,13 @@ def tts_create(
 @audio_app.command("tts-clone")
 def tts_clone(
     ctx: typer.Context,
-    audio: Annotated[str, typer.Option("--audio")],
+    audio: Annotated[Optional[str], typer.Option("--audio")] = None,
+    voice_id: Optional[str] = None,
     text: Annotated[Optional[str], typer.Option("--text")] = None,
     text_file: Annotated[Optional[Path], typer.Option("--text-file")] = None,
-    language: str = "Auto",
-    seed: int = -1,
+    model: str = "qwen3",
+    language: Optional[str] = None,
+    seed: Optional[int] = None,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
     output_json: OutputJsonOption = False,
@@ -1345,8 +1351,10 @@ def tts_clone(
         ctx,
         lambda: runtime.services().execute_tts_clone(
             audio=audio,
+            voice_id=voice_id,
             text=text,
             text_file=text_file,
+            model=model,
             language=language,
             seed=seed,
             execution=runtime.execution_options(),
@@ -1354,22 +1362,23 @@ def tts_clone(
     )
 
 
-@audio_app.command("tts-voice")
-def tts_voice(
+@audio_app.command("tts-design")
+def tts_design(
     ctx: typer.Context,
     text: Annotated[Optional[str], typer.Option("--text")] = None,
     text_file: Annotated[Optional[Path], typer.Option("--text-file")] = None,
-    character: str = "Female",
-    style: str = "Auto",
-    language: str = "Auto",
-    prompt: str = "",
-    seed: int = -1,
+    model: str = "qwen3",
+    character: Optional[str] = None,
+    style: Optional[str] = None,
+    language: Optional[str] = None,
+    prompt: Optional[str] = None,
+    seed: Optional[int] = None,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
     output_json: OutputJsonOption = False,
     jq_expr: JqOption = None,
 ) -> None:
-    """Create speech from text using a character voice."""
+    """Design voice previews from a description."""
 
     runtime = apply_common_options(
         ctx,
@@ -1380,9 +1389,10 @@ def tts_voice(
     )
     run_action(
         ctx,
-        lambda: runtime.services().execute_tts_voice(
+        lambda: runtime.services().execute_tts_design(
             text=text,
             text_file=text_file,
+            model=model,
             character=character,
             style=style,
             language=language,
@@ -1391,6 +1401,64 @@ def tts_voice(
             execution=runtime.execution_options(),
         ),
     )
+
+
+@audio_app.command("tts-voice")
+def tts_voice(
+    ctx: typer.Context,
+    name: Annotated[str, typer.Option("--name")],
+    audio: Annotated[list[str], typer.Option("--audio")] = [],
+    provider: Optional[str] = None,
+    preview_id: Optional[str] = None,
+    description: str = "",
+    output_json: OutputJsonOption = False,
+    jq_expr: JqOption = None,
+) -> None:
+    """Save a voice from audio samples or a design preview."""
+    runtime = apply_common_options(ctx, output_json=output_json, jq_expr=jq_expr)
+    run_action(
+        ctx,
+        lambda: runtime.services().execute_tts_voice(
+            name=name,
+            audio=audio,
+            provider=provider,
+            preview_id=preview_id,
+            description=description,
+        ),
+    )
+
+
+@audio_app.command("tts-voices")
+def tts_voices(
+    ctx: typer.Context,
+    provider: str = "labs",
+    offset: int = 0,
+    limit: int = 50,
+    output_json: OutputJsonOption = False,
+    jq_expr: JqOption = None,
+) -> None:
+    """List presets and saved voices for a provider."""
+    runtime = apply_common_options(ctx, output_json=output_json, jq_expr=jq_expr)
+    run_action(
+        ctx,
+        lambda: runtime.services().list_tts_voices(
+            provider=provider,
+            offset=offset,
+            limit=limit,
+        ),
+    )
+
+
+@audio_app.command("tts-delete")
+def tts_delete(
+    ctx: typer.Context,
+    voice_id: Annotated[str, typer.Option("--voice-id")],
+    output_json: OutputJsonOption = False,
+    jq_expr: JqOption = None,
+) -> None:
+    """Delete an owned saved voice."""
+    runtime = apply_common_options(ctx, output_json=output_json, jq_expr=jq_expr)
+    run_action(ctx, lambda: runtime.services().delete_tts_voice(voice_id=voice_id))
 
 
 @app.command("status")
