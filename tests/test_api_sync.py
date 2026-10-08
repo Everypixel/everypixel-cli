@@ -292,3 +292,18 @@ def test_bundled_tts_contract_matches_local_models():
     assert schema["paths"]["/v1/tts_voice"]["post"]["requestBody"]["content"][
         "application/json"
     ]["schema"] == {"$ref": "#/components/schemas/TTSVoiceSaveRequest"}
+
+
+def test_bundled_task_costs_are_optional_usd_strings():
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    components = schema["components"]["schemas"]
+    for name, fields in (
+        ("TaskResponse", ("estimated_cost",)),
+        ("ImgenStatusResponse", ("estimated_cost", "billed_cost")),
+    ):
+        for field in fields:
+            assert components[name]["properties"][field]["anyOf"] == [
+                {"type": "string"},
+                {"type": "null"},
+            ]
+            assert field not in components[name]["required"]

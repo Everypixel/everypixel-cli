@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.1] - 2026-10-08
+
+- Display estimated and billed generation costs, including chat responses.
+- Report observed queue time while waiting for tasks.
+
 ## [0.4.0] - 2026-10-07
 
 - Add ElevenLabs speech synthesis and voice design.

@@ -77,18 +77,22 @@ def emit_human(data: Any, *, title: str | None = None, no_color: bool = False) -
     if title:
         console.print(f"[bold]{title}[/bold]")
     if isinstance(data, dict) and render_known_table(console, data):
+        render_costs(console, data)
         return
     if isinstance(data, dict):
         table = Table(show_header=False, box=None)
         table.add_column("Key", style="cyan")
         table.add_column("Value")
         for key, value in data.items():
+            if key in {"estimated_cost", "billed_cost"}:
+                continue
             table.add_row(
                 str(key),
                 json.dumps(value, ensure_ascii=False)
                 if isinstance(value, (dict, list))
                 else str(value),
             )
+        render_costs(console, data, table=table)
         console.print(table)
     else:
         console.print(data)
@@ -140,6 +144,26 @@ class ChatRenderer:
                     json.dumps(message["tool_calls"], ensure_ascii=False, indent=2),
                     soft_wrap=True,
                 )
+        render_costs(self.console, data)
+
+
+def render_costs(
+    console: Console, data: dict[str, Any], *, table: Table | None = None
+) -> None:
+    """Display API-provided USD strings without rounding or inferring charges."""
+
+    cost_table = table if table is not None else Table(show_header=False, box=None)
+    if table is None:
+        cost_table.add_column("Key", style="cyan")
+        cost_table.add_column("Value")
+    for key in ("estimated_cost", "billed_cost"):
+        if key == "estimated_cost" and data.get("status") == "SUCCESS":
+            continue
+        value = data.get(key)
+        if value is not None:
+            cost_table.add_row(key, Text(f"${value}"))
+    if table is None and cost_table.row_count:
+        console.print(cost_table)
 
 
 def render_known_table(console: Console, data: dict[str, Any]) -> bool:

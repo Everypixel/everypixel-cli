@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -106,9 +107,14 @@ def test_sync_scalar_response_is_returned_without_task_parsing(response):
 def test_wait_and_download_use_one_execution_pipeline(make_temp_dir):
     target = make_temp_dir("wait-download")
     client = FakeClient(
-        {"task_id": "task-2", "status": "PENDING"},
+        {"task_id": "task-2", "status": "PENDING", "estimated_cost": "0.08"},
         statuses=[
-            {"task_id": "task-2", "status": "SUCCESS", "result": "https://cdn.test/a"}
+            {
+                "task_id": "task-2",
+                "status": "SUCCESS",
+                "result": "https://cdn.test/a",
+                "billed_cost": "0.076",
+            }
         ],
     )
     downloads = FakeDownloads()
@@ -117,11 +123,39 @@ def test_wait_and_download_use_one_execution_pipeline(make_temp_dir):
     )
 
     assert result.task is not None and result.task["status"] == "SUCCESS"
+    assert "queue_sec" not in result.task
     assert result.saved_files == (target / "task-2.mp4",)
     assert len(downloads.calls) == 1
     assert serialize_operation_result(result)["downloaded"] == [
         str(target / "task-2.mp4")
     ]
+
+    assert "estimated_cost" not in serialize_operation_result(result)
+    assert serialize_operation_result(result)["billed_cost"] == "0.076"
+
+
+def test_wait_records_only_first_observed_started_time(monkeypatch):
+    ticks = iter([10, 11, 15.126, 19, 22.346])
+    monkeypatch.setattr(
+        "everypixel_cli.application.services.time",
+        SimpleNamespace(monotonic=lambda: next(ticks), sleep=lambda _: None),
+    )
+    client = FakeClient(
+        {"task_id": "task-queue", "status": "PENDING"},
+        statuses=[
+            {"task_id": "task-queue", "status": "PENDING"},
+            {"task_id": "task-queue", "status": "STARTED"},
+            {"task_id": "task-queue", "status": "STARTED"},
+            {"task_id": "task-queue", "status": "SUCCESS", "result": "ready"},
+        ],
+    )
+    result = OperationService(client).execute(
+        async_request(ExecutionOptions(wait=True, poll_interval=0))
+    )
+    payload = serialize_operation_result(result)
+    assert payload["queue_sec"] == 5.13
+    assert payload["elapsed_sec"] == 12.35
+    assert client.statuses == []
 
 
 def test_failed_task_stops_before_downloading(make_temp_dir):
@@ -166,6 +200,7 @@ def test_status_download_waits_for_success_before_saving(make_temp_dir):
                 "task_id": "task-4",
                 "status": "SUCCESS",
                 "result": "https://cdn.test/video",
+                "billed_cost": "0",
             },
         ],
     )
@@ -181,6 +216,9 @@ def test_status_download_waits_for_success_before_saving(make_temp_dir):
     assert result.saved_files == (target / "task-4.mp4",)
     assert client.statuses == []
     assert len(downloads.calls) == 1
+
+    assert serialize_operation_result(result)["billed_cost"] == "0"
+    assert "estimated_cost" not in serialize_operation_result(result)
 
 
 def test_polling_timeout_keeps_api_exit_code():

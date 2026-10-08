@@ -679,12 +679,15 @@ def test_generic_run_merge_order_in_dry_run():
     assert payload["body"] == {"prompt": "from-prompt", "count": 1}
 
 
+@pytest.mark.parametrize("output", ["json", "human"])
 @respx.mock
-def test_generic_run_no_wait_returns_created_task(monkeypatch):
+def test_generic_run_no_wait_returns_created_task(monkeypatch, output):
     monkeypatch.setenv("EVERYPIXEL_CLIENT_ID", "id")
     monkeypatch.setenv("EVERYPIXEL_CLIENT_SECRET", "secret")
     respx.post("https://api.test/v1/image_generate").mock(
-        return_value=httpx.Response(200, json={"task_id": "abc", "status": "PENDING"})
+        return_value=httpx.Response(
+            200, json={"task_id": "abc", "status": "PENDING", "estimated_cost": "0"}
+        )
     )
 
     result = runner.invoke(
@@ -699,12 +702,23 @@ def test_generic_run_no_wait_returns_created_task(monkeypatch):
             "-i",
             "prompt=woman",
             "--no-wait",
-            "--output-json",
+            *(["--output-json"] if output == "json" else []),
         ],
     )
 
     assert result.exit_code == 0, result.output
-    assert json.loads(result.stdout) == {"task_id": "abc", "status": "PENDING"}
+    assert result.stderr == ""
+    assert len(respx.calls) == 1
+    if output == "json":
+        assert json.loads(result.stdout) == {
+            "task_id": "abc",
+            "status": "PENDING",
+            "estimated_cost": "0",
+        }
+    else:
+        assert "abc" in result.stdout
+        assert "estimated_cost $0" in " ".join(result.stdout.split())
+        assert "billed_cost" not in result.stdout
 
 
 @respx.mock
@@ -1112,12 +1126,16 @@ def test_multiple_common_flags_after_command(monkeypatch, make_temp_dir):
     assert json.loads(result.stdout) == [str(output_dir / "abc.png")]
 
 
+@pytest.mark.parametrize("output", ["json", "human"])
+@pytest.mark.parametrize("billed_cost", [None, "0", "0.0760000001"])
 @respx.mock
-def test_image_generate_wait_polls_until_success(monkeypatch):
+def test_image_generate_wait_polls_until_success(monkeypatch, output, billed_cost):
     monkeypatch.setenv("EVERYPIXEL_CLIENT_ID", "id")
     monkeypatch.setenv("EVERYPIXEL_CLIENT_SECRET", "secret")
-    mock_async_post("/v1/image_generate")
-    respx.get("https://api.test/v1/status").mock(
+    respx.post("https://api.test/v1/image_generate").respond(
+        200, json={"task_id": "abc", "status": "PENDING", "estimated_cost": "0.08"}
+    )
+    status = respx.get("https://api.test/v1/status").mock(
         side_effect=[
             httpx.Response(200, json={"task_id": "abc", "status": "PENDING"}),
             httpx.Response(
@@ -1126,6 +1144,8 @@ def test_image_generate_wait_polls_until_success(monkeypatch):
                     "task_id": "abc",
                     "status": "SUCCESS",
                     "result": "https://cdn.test/out.png",
+                    "estimated_cost": "0.09",
+                    **({"billed_cost": billed_cost} if billed_cost is not None else {}),
                 },
             ),
         ]
@@ -1136,7 +1156,7 @@ def test_image_generate_wait_polls_until_success(monkeypatch):
         [
             "--base-url",
             "https://api.test",
-            "--output-json",
+            *(["--output-json"] if output == "json" else []),
             "--poll-interval",
             "0.001",
             "image",
@@ -1148,9 +1168,23 @@ def test_image_generate_wait_polls_until_success(monkeypatch):
     )
 
     assert result.exit_code == 0, result.output
-    payload = json.loads(result.stdout)
-    assert payload["status"] == "SUCCESS"
-    assert payload["result"] == "https://cdn.test/out.png"
+    assert result.stderr == ""
+    assert status.call_count == 2
+    if output == "json":
+        payload = json.loads(result.stdout)
+        assert payload["status"] == "SUCCESS"
+        assert payload["result"] == "https://cdn.test/out.png"
+        assert "estimated_cost" not in payload
+        if billed_cost is None:
+            assert "billed_cost" not in payload
+        else:
+            assert payload["billed_cost"] == billed_cost
+    else:
+        assert "estimated_cost" not in result.stdout
+        if billed_cost is None:
+            assert "billed_cost" not in result.stdout
+        else:
+            assert f"billed_cost ${billed_cost}" in " ".join(result.stdout.split())
 
 
 @respx.mock

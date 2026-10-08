@@ -29,6 +29,7 @@ COMPLETION = {
         }
     ],
     "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+    "billed_cost": "0.000076",
 }
 
 
@@ -159,9 +160,10 @@ def test_chat_synchronous_history_tools_and_falsey_options(output, make_temp_dir
         assert json.loads(result.stdout) == COMPLETION
     else:
         assert (
-            result.stdout
+            result.stdout.split("billed_cost")[0].rstrip() + "\n"
             == ("Thinking.\n" if output == "reasoning" else "") + "Hello [world]!\n"
         )
+        assert "billed_cost $0.000076" in " ".join(result.stdout.split())
 
 
 @pytest.mark.parametrize("output", ["json", "human", "reasoning"])
@@ -199,6 +201,7 @@ def test_chat_stream_assembles_reasoning_tools_and_usage(output):
             "tool_calls",
         ),
         {"id": "chat-1", "choices": [], "usage": COMPLETION["usage"]},
+        {"id": "chat-1", "choices": [], "billed_cost": "0"},
     ]
     stream = EventStream(
         ": keepalive\r\n\r\n" + "".join(map(frame, events)) + "data: [DONE]\r\n\r\n"
@@ -230,6 +233,8 @@ def test_chat_stream_assembles_reasoning_tools_and_usage(output):
         body = json.loads(result.stdout)
         assert body["object"] == "chat.completion"
         assert body["usage"] == COMPLETION["usage"]
+        assert body["billed_cost"] == "0"
+        assert "estimated_cost" not in body
         choice = body["choices"][0]
         assert choice["finish_reason"] == "tool_calls"
         assert choice["message"] == {
@@ -251,6 +256,8 @@ def test_chat_stream_assembles_reasoning_tools_and_usage(output):
         }
     else:
         assert result.stdout.count("Привет!") == 1
+        assert " ".join(result.stdout.split()).count("billed_cost $0") == 1
+        assert "estimated_cost" not in result.stdout
         assert ("Think." in result.stdout) is (output == "reasoning")
         assert '"name": "weather"' in result.stdout
 

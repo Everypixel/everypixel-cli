@@ -47,3 +47,17 @@ def test_quality_human_output_uses_table(capsys):
     assert "score" in output
     assert "0.3833" in output
     assert "high" in output
+
+
+def test_generation_cost_matches_task_table_style(capsys, monkeypatch):
+    from rich.text import Text
+
+    monkeypatch.setenv("FORCE_COLOR", "1")
+    emit_human({"task_id": "abc", "status": "SUCCESS", "billed_cost": "0.076"})
+    output = capsys.readouterr().out
+    assert "\x1b[36mtask_id" in output
+    assert "\x1b[36mbilled_cost" in output
+    rows = Text.from_ansi(output).plain.splitlines()
+    task_row = next(row for row in rows if "task_id" in row)
+    cost_row = next(row for row in rows if "billed_cost" in row)
+    assert task_row.index("abc") == cost_row.index("$0.076")

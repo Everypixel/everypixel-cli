@@ -14,6 +14,8 @@ def serialize_operation_result(result: OperationResult) -> Any:
     value = result.value
     if isinstance(value, Mapping):
         payload = dict(value)
+        if "task_id" in payload and payload.get("status") == "SUCCESS":
+            payload.pop("estimated_cost", None)
         if result.saved_files:
             payload["downloaded"] = [str(path) for path in result.saved_files]
         return payload

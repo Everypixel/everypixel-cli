@@ -106,6 +106,8 @@ class TaskResponse(BaseModel):
     result: Any | None = None
     queue: int | None = None
     error: str | None = None
+    estimated_cost: str | None = None
+    billed_cost: str | None = None
 
 
 def normalize_grok_model(value: Any) -> Any:

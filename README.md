@@ -357,6 +357,12 @@ Passing `--download` always waits for a successful result before saving files:
 everypixel wait TASK_ID --download ./outputs
 ```
 
+`elapsed_sec` is total local waiting time; `queue_sec` estimates time until the
+first observed `STARTED` response.
+
+API costs are USD strings: `estimated_cost` for pending tasks and `billed_cost`
+for successful results and chat. Missing costs are omitted; `"0"` means no charge.
+
 A Bash automation example:
 
 ```bash

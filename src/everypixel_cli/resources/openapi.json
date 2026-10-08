@@ -1722,6 +1722,18 @@
       },
       "ImgenStatusResponse": {
         "properties": {
+          "billed_cost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Final accrued request cost in USD; settled later",
+            "title": "Billed Cost"
+          },
           "error": {
             "anyOf": [
               {
@@ -1732,6 +1744,18 @@
               }
             ],
             "title": "Error"
+          },
+          "estimated_cost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Estimated request cost in USD, including free quota",
+            "title": "Estimated Cost"
           },
           "queue": {
             "anyOf": [
@@ -3397,6 +3421,18 @@
       },
       "TaskResponse": {
         "properties": {
+          "estimated_cost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Estimated request cost in USD, including free quota",
+            "title": "Estimated Cost"
+          },
           "queue": {
             "anyOf": [
               {

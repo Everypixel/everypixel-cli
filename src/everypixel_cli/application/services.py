@@ -212,14 +212,20 @@ class TaskService:
 
     def wait(self, task_id: str, options: ExecutionOptions) -> dict[str, Any]:
         started = time.monotonic()
+        queue_sec: float | None = None
         while True:
             options.check_cancelled()
             payload = self.status(task_id)
             options.check_cancelled()
+            elapsed = time.monotonic() - started
+            if payload.get("status") == "STARTED" and queue_sec is None:
+                queue_sec = round(elapsed, 2)
             if payload.get("status") == "SUCCESS":
-                payload["elapsed_sec"] = round(time.monotonic() - started, 2)
+                payload["elapsed_sec"] = round(elapsed, 2)
+                if queue_sec is not None:
+                    payload["queue_sec"] = queue_sec
                 return payload
-            if time.monotonic() - started >= options.timeout:
+            if elapsed >= options.timeout:
                 raise TaskPollingError(
                     f"Timed out waiting for task {task_id}",
                     code="timeout",
