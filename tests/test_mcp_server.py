@@ -484,3 +484,36 @@ def test_mcp_tts_create_leaves_default_model_to_api() -> None:
         services.close()
     assert result.is_error is False
     assert json.loads(route.calls[0].request.content) == {"text": "я" * 201, "seed": 0}
+
+
+@respx.mock
+def test_mcp_video_edit_forwards_owned_task_id() -> None:
+    route = respx.post("https://api.test/v1/video_edit").respond(
+        200, json={"task_id": "task-1", "status": "PENDING"}
+    )
+    services = ApplicationServices.with_client(
+        APIClient(base_url="https://api.test", client_id="id", client_secret="secret")
+    )
+    task_id = "11111111-2222-4333-8444-555555555555"
+
+    async def call_tool():
+        server = create_mcp_server(lambda: services)
+        async with Client(server) as client:
+            return await client.call_tool(
+                "video_edit",
+                {
+                    "prompt": "change the lighting",
+                    "model": "gemini-omni-1.1-flash",
+                    "task_id": task_id,
+                    "execution": {"wait": False},
+                },
+            )
+
+    result = asyncio.run(call_tool())
+    assert result.is_error is False
+    assert json.loads(route.calls[0].request.content) == {
+        "prompt": "change the lighting",
+        "model": "gemini-omni-1.1-flash",
+        "video_from_task_id": task_id,
+        "resolution": "720p",
+    }

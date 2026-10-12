@@ -314,6 +314,101 @@ def test_tts_preserves_text_and_rejects_qwen_over_limit(
 @pytest.mark.parametrize(
     "args",
     [
+        [
+            "image",
+            "generate",
+            "x",
+            "--model",
+            "gemini-3.1-flash-lite",
+            "--resolution",
+            "2k",
+        ],
+        [
+            "image",
+            "edit",
+            "x",
+            "--model",
+            "gemini-3.1-flash-lite",
+            "--resolution",
+            "4k",
+            "--image",
+            "https://img.test/a.png",
+        ],
+        ["image", "generate", "x", "--model", "flux3", "--resolution", "3k"],
+        [
+            "image",
+            "generate",
+            "x",
+            "--model",
+            "flux3",
+            "--image",
+            "https://img.test/a.png",
+        ],
+        [
+            "image",
+            "edit",
+            "x",
+            "--model",
+            "seedream-5-flash",
+            "--image",
+            "https://img.test/a.png",
+            "--resolution",
+            "4k",
+        ],
+        [
+            "image",
+            "edit",
+            "x",
+            "--model",
+            "flux3",
+            *[
+                part
+                for _ in range(11)
+                for part in ("--image", "https://img.test/a.png")
+            ],
+        ],
+        ["video", "generate", "x", "--model", "veo-3.1"],
+        ["video", "edit", "x", "--model", "gemini-omni-1.1-flash"],
+        [
+            "video",
+            "edit",
+            "x",
+            "--model",
+            "gemini-omni-1.1-flash",
+            "--task-id",
+            "invalid",
+        ],
+        [
+            "video",
+            "edit",
+            "x",
+            "--model",
+            "gemini-omni-1.1-flash",
+            "--task-id",
+            "11111111-2222-4333-8444-555555555555",
+            "--duration",
+            "5",
+        ],
+        [
+            "video",
+            "edit",
+            "x",
+            "--model",
+            "gemini-omni-1.1-flash",
+            "--video",
+            "https://cdn.test/v.mp4",
+        ],
+        [
+            "video",
+            "edit",
+            "x",
+            "--model",
+            "seedance2",
+            "--task-id",
+            "11111111-2222-4333-8444-555555555555",
+            "--video",
+            "https://cdn.test/v.mp4",
+        ],
         ["image", "generate", "x", "--model", "wan22"],
         ["image", "generate", "x", "--model", "grok_quality"],
         ["image", "generate", "x", "--style", "instagram"],
@@ -956,16 +1051,28 @@ def test_image_generate_payload(monkeypatch):
     }
 
 
+@pytest.mark.parametrize(
+    ("model", "resolution"),
+    [
+        ("seedream-5", "2k"),
+        ("seedream-5-flash", "2k"),
+        ("flux3", "1k"),
+        ("gemini-nano-banana-2.1", "1k"),
+        ("gemini-3.1-flash-lite", "1k"),
+    ],
+)
 @respx.mock
-def test_seedream_image_generate_uses_provider_default_resolution(monkeypatch):
+def test_image_generate_uses_provider_default_resolution(
+    model, resolution, monkeypatch
+):
     route = mock_async_post("/v1/image_generate")
 
     invoke_json(
-        ["image", "generate", "product photo", "--model", "seedream-5"],
+        ["image", "generate", "product photo", "--model", model],
         monkeypatch,
     )
 
-    assert request_json(route)["resolution"] == "2k"
+    assert request_json(route)["resolution"] == resolution
 
 
 @respx.mock
@@ -987,6 +1094,10 @@ def test_wan_image_generate_uses_provider_default_resolution(monkeypatch):
     [
         ("gpt-image-2.5-sunburst", 16, "3k", "square"),
         ("gemini-3-pro", 14, "4k", None),
+        ("flux3", 10, "4k", None),
+        ("gemini-nano-banana-2.1", 14, "4k", None),
+        ("gemini-3.1-flash-lite", 14, "1k", None),
+        ("seedream-5-flash", 10, "2k", None),
     ],
 )
 @respx.mock

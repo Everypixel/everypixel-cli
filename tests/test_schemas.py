@@ -291,23 +291,23 @@ def test_wan27_video_contracts_validate_reference_modes():
         )
 
 
-def test_veo_video_generation_contract():
-    payload = validate_video_generate(prompt="x", model="veo-3.1-fast")
+def test_omni_video_generation_contract():
+    payload = validate_video_generate(prompt="x", model="gemini-omni-1.1-flash")
 
     assert payload.duration == 8
     assert payload.resolution == "720p"
     assert payload.aspect_ratio == "16:9"
-    with pytest.raises(ValidationError, match="requires duration 8"):
+    with pytest.raises(ValidationError, match="less than or equal to 10"):
         validate_video_generate(
             prompt="x",
-            model="veo-3.1",
-            duration=6,
+            model="gemini-omni-1.1-flash",
+            duration=11,
             resolution="1080p",
         )
     with pytest.raises(ValidationError, match="cannot be combined"):
         validate_video_generate(
             prompt="x",
-            model="veo-3.1",
+            model="gemini-omni-1.1-flash",
             image_url="https://img.test/start.png",
             reference_image_urls=["https://img.test/reference.png"],
         )

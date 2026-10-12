@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.5.0] - 2026-10-12
+
+- Add FLUX.3 images, Nano Banana 2.1, Nano Banana 2 Lite, and Seedream 5 Flash.
+- Add Gemini Omni 1.1 video generation and editing, and video editing by source task ID.
+- Support 1080p video with Grok Imagine 1.5.
+
 ## [0.4.1] - 2026-10-08
 
 - Display estimated and billed generation costs, including chat responses.

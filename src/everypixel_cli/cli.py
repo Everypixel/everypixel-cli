@@ -902,7 +902,7 @@ def video_generate(
         list[str],
         typer.Option(
             "--reference-image",
-            help="MiniMax, Wan or Veo reference image URL/local path. Can be repeated.",
+            help="MiniMax, Wan or Omni reference image URL/path. Can be repeated.",
         ),
     ] = [],
     reference_video: Annotated[
@@ -971,6 +971,12 @@ def video_edit(
         Optional[str],
         typer.Option("--video", help="Reference video URL or local path."),
     ] = None,
+    task_id: Annotated[
+        Optional[str],
+        typer.Option(
+            "--task-id", help="Owned source video task ID; required for Omni."
+        ),
+    ] = None,
     audio: Annotated[
         Optional[str],
         typer.Option("--audio", help="Reference audio URL or local path."),
@@ -1001,7 +1007,7 @@ def video_edit(
     output_json: OutputJsonOption = False,
     jq_expr: JqOption = None,
 ) -> None:
-    """Edit video with Seedance, Kling, Wan, or Aleph media."""
+    """Edit video using media or an owned source task."""
 
     runtime = apply_common_options(
         ctx,
@@ -1017,6 +1023,7 @@ def video_edit(
             model=model,
             images=image,
             video=video,
+            task_id=task_id,
             audio=audio,
             duration=duration,
             resolution=resolution,

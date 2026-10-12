@@ -38,6 +38,7 @@ ImageQuality = Literal["low", "medium", "high", "xhigh", "max"]
 GPTImageModel = Literal["gpt-image-2", "gpt-image-2.5-sunburst"]
 RasterImageGenerateModel = Literal[
     GPTImageModel,
+    "flux3",
     "zimage",
     "wan2.7",
     "wan2.7-pro",
@@ -47,12 +48,16 @@ RasterImageGenerateModel = Literal[
     "grok-imagine-2",
     "grok-imagine-2-low",
     "gemini-3.1-flash",
+    "gemini-nano-banana-2.1",
+    "gemini-3.1-flash-lite",
     "gemini-3-pro",
     "seedream-5-pro",
+    "seedream-5-flash",
     "seedream-5",
 ]
 ImageEditModel = Literal[
     GPTImageModel,
+    "flux3",
     "flux2",
     "qwen",
     "wan2.7",
@@ -62,23 +67,35 @@ ImageEditModel = Literal[
     "grok-imagine-2",
     "grok-imagine-2-low",
     "gemini-3.1-flash",
+    "gemini-nano-banana-2.1",
+    "gemini-3.1-flash-lite",
     "gemini-3-pro",
     "seedream-5-pro",
+    "seedream-5-flash",
     "seedream-5",
 ]
 
-_GEMINI_IMAGE_MODELS = {"gemini-3.1-flash", "gemini-3-pro"}
+_GEMINI_IMAGE_MODELS = {
+    "gemini-3.1-flash",
+    "gemini-3-pro",
+    "gemini-nano-banana-2.1",
+    "gemini-3.1-flash-lite",
+}
 _GROK_IMAGE_MODELS = {"grok-imagine", "grok-imagine-2", "grok-imagine-2-low"}
 RecraftVectorModel = Literal["recraftv4_1_vector", "recraftv4_1_pro_vector"]
 ImageGenerateModel = Literal[RasterImageGenerateModel, RecraftVectorModel]
 _WAN_IMAGE_MODELS = {"wan2.7", "wan2.7-pro"}
-_SEEDREAM_IMAGE_MODELS = {"seedream-5-pro", "seedream-5"}
+_SEEDREAM_IMAGE_MODELS = {"seedream-5-pro", "seedream-5", "seedream-5-flash"}
 GPT_IMAGE_MODEL_QUALITIES = {
     "gpt-image-2": ("low", "medium", "high"),
     "gpt-image-2.5-sunburst": ("low", "medium", "high", "xhigh", "max"),
 }
 _IMAGE_EDIT_MODEL_MAX_IMAGES = {
     "flux2": 5,
+    "flux3": 10,
+    "gemini-nano-banana-2.1": 14,
+    "gemini-3.1-flash-lite": 14,
+    "seedream-5-flash": 10,
     "qwen": 3,
     "wan2.7": 9,
     "wan2.7-pro": 9,
@@ -252,13 +269,19 @@ class ImageGeneratePayload(BaseModel):
                     f"resolution {self.resolution} is not supported by model "
                     f"{self.model}"
                 )
-        if self.model in _GEMINI_IMAGE_MODELS and self.resolution not in {
+        if self.model == "gemini-3.1-flash-lite" and self.resolution != "1k":
+            raise ValueError("gemini-3.1-flash-lite supports only 1k")
+        if self.model in (_GEMINI_IMAGE_MODELS | {"flux3"}) and self.resolution not in {
             "1k",
             "2k",
             "4k",
         }:
             raise ValueError(
                 f"resolution {self.resolution} is not supported by model {self.model}"
+            )
+        if self.model == "flux3" and self.image_url is not None:
+            raise ValueError(
+                "FLUX.3 image generate does not accept image; use image edit"
             )
         if self.model in GPT_IMAGE_MODEL_QUALITIES:
             if self.image_url is not None:
@@ -282,6 +305,7 @@ class ImageGeneratePayload(BaseModel):
                 self.resolution = "2k"
             supported_resolutions_by_model = {
                 "seedream-5-pro": {"1k", "2k"},
+                "seedream-5-flash": {"1k", "2k"},
                 "seedream-5": {"2k", "3k", "4k"},
             }
             if self.resolution not in supported_resolutions_by_model[self.model]:
@@ -341,7 +365,9 @@ class ImageEditPayload(BaseModel):
                     f"resolution {self.resolution} is not supported by model "
                     f"{self.model}"
                 )
-        if self.model in _GEMINI_IMAGE_MODELS and self.resolution not in {
+        if self.model == "gemini-3.1-flash-lite" and self.resolution != "1k":
+            raise ValueError("gemini-3.1-flash-lite supports only 1k")
+        if self.model in (_GEMINI_IMAGE_MODELS | {"flux3"}) and self.resolution not in {
             "1k",
             "2k",
             "4k",
@@ -354,6 +380,7 @@ class ImageEditPayload(BaseModel):
                 self.resolution = "2k"
             supported = {
                 "seedream-5-pro": {"1k", "2k"},
+                "seedream-5-flash": {"1k", "2k"},
                 "seedream-5": {"2k", "3k", "4k"},
             }
             if self.resolution not in supported[self.model]:
@@ -489,8 +516,8 @@ Seedance2VideoResolution = Literal["480p", "720p", "1080p", "4k"]
 Seedance2VideoAspectRatio = Literal["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"]
 Wan27VideoResolution = Literal["720p", "1080p"]
 Wan27VideoAspectRatio = Literal["16:9", "9:16", "1:1", "4:3", "3:4"]
-VeoVideoResolution = Literal["720p", "1080p", "4k"]
-VeoVideoAspectRatio = Literal["16:9", "9:16"]
+OmniVideoResolution = Literal["720p", "1080p", "4k"]
+OmniVideoAspectRatio = Literal["16:9", "9:16"]
 Aleph2AspectRatio = Literal["16:9", "4:3", "3:2", "1:1", "2:3", "3:4", "9:16", "21:9"]
 VideoGenerateModel = Literal[
     "minimax-h3-turbo",
@@ -501,8 +528,7 @@ VideoGenerateModel = Literal[
     "grok-imagine",
     "grok-imagine-1.5",
     "flux3",
-    "veo-3.1",
-    "veo-3.1-fast",
+    "gemini-omni-1.1-flash",
     "seedance2",
     "seedance2-mini",
     "seedance2.5",
@@ -514,6 +540,7 @@ VideoGenerateModel = Literal[
     "wan3.0",
 ]
 VideoEditModel = Literal[
+    "gemini-omni-1.1-flash",
     "seedance2",
     "seedance2-mini",
     "seedance2.5",
@@ -621,47 +648,43 @@ class Grok15VideoGenRequest(_StrictVideoPayload):
     prompt: str
     model: Literal["grok-imagine-1.5"] = "grok-imagine-1.5"
     duration: int = Field(ge=1, le=15)
-    resolution: Literal["480p", "720p"] = "480p"
+    resolution: Literal["480p", "720p", "1080p"] = "480p"
     aspect_ratio: CommonVideoAspectRatio = "16:9"
     image_url: str = Field(min_length=1)
     callback_url: str | None = None
 
 
-class VeoVideoGenRequest(_StrictVideoPayload):
+class OmniVideoGenRequest(_StrictVideoPayload):
     prompt: str = Field(min_length=1)
-    model: Literal["veo-3.1", "veo-3.1-fast"]
-    duration: Literal[4, 6, 8] = 8
-    resolution: VeoVideoResolution = "720p"
-    aspect_ratio: VeoVideoAspectRatio = "16:9"
+    model: Literal["gemini-omni-1.1-flash"] = "gemini-omni-1.1-flash"
+    duration: int = Field(default=8, ge=3, le=10)
+    resolution: OmniVideoResolution = "720p"
+    aspect_ratio: OmniVideoAspectRatio = "16:9"
     image_url: str | None = None
     image_last_url: str | None = None
     reference_image_urls: list[str] = Field(default_factory=list, max_length=3)
-    callback_url: str | None = None
+    callback_url: HttpUrl | None = None
 
     @model_validator(mode="after")
-    def validate_media_and_duration(self) -> "VeoVideoGenRequest":
+    def validate_frames(self) -> "OmniVideoGenRequest":
         for value in (self.image_url, self.image_last_url):
             if value is not None and not value.startswith(
                 ("http://", "https://", "data:image/")
             ):
                 raise ValueError(
-                    "Veo frame input must be an HTTP(S) URL or image data URI"
+                    "Omni frame input must be an HTTP(S) URL or image data URI"
                 )
         for value in self.reference_image_urls:
             if not value.startswith(("http://", "https://", "data:image/")):
                 raise ValueError(
-                    "Veo reference image must be an HTTP(S) URL or image data URI"
+                    "Omni reference image must be an HTTP(S) URL or image data URI"
                 )
-        if self.resolution != "720p" and self.duration != 8:
-            raise ValueError("Veo 1080p and 4k generation requires duration 8")
         if self.image_last_url and not self.image_url:
-            raise ValueError("Veo image_last_url requires image_url")
+            raise ValueError("Omni image_last_url requires image_url")
         if self.reference_image_urls and (self.image_url or self.image_last_url):
             raise ValueError(
-                "Veo reference_image_urls cannot be combined with frame images"
+                "Omni reference_image_urls cannot be combined with frame images"
             )
-        if self.reference_image_urls and self.duration != 8:
-            raise ValueError("Veo reference images require duration 8")
         return self
 
 
@@ -857,7 +880,39 @@ class Flux3VideoGenRequest(_StrictVideoPayload):
         return self
 
 
-class Flux3VideoEditPayload(_StrictVideoPayload):
+class VideoEditSourcePayload(_StrictVideoPayload):
+    video_url: Annotated[str, AfterValidator(validate_provider_video)] | None = None
+    video_from_task_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def validate_video_source(self) -> "VideoEditSourcePayload":
+        embedded = sum(
+            item.get("type") == "video_url" for item in getattr(self, "content", [])
+        )
+        sources = embedded + bool(self.video_url) + bool(self.video_from_task_id)
+        if sources > 1:
+            raise ValueError(
+                "Provide only one video source: "
+                "video_url, video_from_task_id, or content"
+            )
+        if not sources and getattr(self, "model", None) in {
+            "wan2.7",
+            "aleph2",
+            "flux3",
+        }:
+            raise ValueError("Either video_url or video_from_task_id must be provided")
+        return self
+
+
+class OmniVideoEditPayload(_StrictVideoPayload):
+    prompt: str = Field(min_length=1)
+    model: Literal["gemini-omni-1.1-flash"] = "gemini-omni-1.1-flash"
+    video_from_task_id: UUID
+    resolution: OmniVideoResolution = "720p"
+    callback_url: HttpUrl | None = None
+
+
+class Flux3VideoEditPayload(VideoEditSourcePayload):
     """Continue a source video using FLUX.3."""
 
     prompt: str = Field(min_length=1, max_length=5000)
@@ -865,7 +920,6 @@ class Flux3VideoEditPayload(_StrictVideoPayload):
     duration: int = Field(default=5, ge=5, le=15)
     resolution: Literal["720p", "1080p"] = "720p"
     aspect_ratio: Flux3VideoAspectRatio = "16:9"
-    video_url: Annotated[str, AfterValidator(validate_provider_video)]
     generate_audio: bool = True
     callback_url: str | None = None
 
@@ -875,7 +929,7 @@ VideoGenerateRequest = Annotated[
     | LTX23VideoGenRequest
     | GrokVideoGenRequest
     | Grok15VideoGenRequest
-    | VeoVideoGenRequest
+    | OmniVideoGenRequest
     | Seedance2VideoGenRequest
     | KlingV26VideoGenRequest
     | KlingV3VideoGenRequest
@@ -889,17 +943,17 @@ VideoGenerateRequest = Annotated[
 ]
 
 
-class VideoEditPayload(Seedance2VideoGenRequest):
+class VideoEditPayload(VideoEditSourcePayload, Seedance2VideoGenRequest):
     """JSON request body for Seedance ``video_edit`` operations."""
 
-    content: list[dict[str, Any]] = Field(min_length=1)
+    content: list[dict[str, Any]] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_content(self) -> "VideoEditPayload":
         """Mirror the documented structural validation before making a request."""
 
         video_count = 0
-        has_visual = False
+        has_visual = bool(self.video_url or self.video_from_task_id)
         has_audio = False
         for item in self.content:
             item_type = item.get("type")
@@ -952,7 +1006,7 @@ class VideoEditPayload(Seedance2VideoGenRequest):
         return self
 
 
-class KlingV3OmniVideoEditPayload(_StrictVideoPayload):
+class KlingV3OmniVideoEditPayload(VideoEditSourcePayload):
     """JSON request body for Kling 3 Omni video-to-video editing."""
 
     prompt: str
@@ -962,7 +1016,7 @@ class KlingV3OmniVideoEditPayload(_StrictVideoPayload):
     aspect_ratio: CommonVideoAspectRatio = "16:9"
     generate_audio: Literal[False] = False
     callback_url: str | None = None
-    content: list[dict[str, Any]] = Field(min_length=1)
+    content: list[dict[str, Any]] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_content(self) -> "KlingV3OmniVideoEditPayload":
@@ -993,7 +1047,7 @@ class KlingV3OmniVideoEditPayload(_StrictVideoPayload):
                         "video_url must be an HTTP(S) URL or MP4/MOV data URI"
                     )
                 video_count += 1
-        if video_count != 1:
+        if video_count + bool(self.video_url or self.video_from_task_id) != 1:
             raise ValueError(
                 "kling-3-omni video edit requires exactly one video reference"
             )
@@ -1004,7 +1058,7 @@ class KlingV3OmniVideoEditPayload(_StrictVideoPayload):
         return self
 
 
-class Wan27VideoEditPayload(_StrictVideoPayload):
+class Wan27VideoEditPayload(VideoEditSourcePayload):
     """JSON request body for Wan 2.7 video editing."""
 
     prompt: str = Field(min_length=1, max_length=5000)
@@ -1012,17 +1066,12 @@ class Wan27VideoEditPayload(_StrictVideoPayload):
     duration: int = Field(default=5, ge=2, le=10)
     resolution: Wan27VideoResolution = "720p"
     aspect_ratio: Wan27VideoAspectRatio = "16:9"
-    video_url: str
     reference_image_urls: list[str] = Field(default_factory=list, max_length=3)
     seed: int = Field(default=-1, ge=-1, le=2_147_483_647)
     callback_url: str | None = None
 
     @model_validator(mode="after")
     def validate_media(self) -> "Wan27VideoEditPayload":
-        if not self.video_url.startswith(
-            ("http://", "https://", "data:video/mp4;", "data:video/quicktime;")
-        ):
-            raise ValueError("Wan 2.7 video must be an HTTP(S) URL or MP4/MOV data URI")
         for value in self.reference_image_urls:
             if not value.startswith(("http://", "https://", "data:image/")):
                 raise ValueError(
@@ -1061,9 +1110,8 @@ class Aleph2Keyframe(BaseModel):
         return self
 
 
-class Aleph2VideoEditPayload(_StrictVideoPayload):
+class Aleph2VideoEditPayload(VideoEditSourcePayload):
     model: Literal["aleph2"] = "aleph2"
-    video_url: str
     prompt: str | None = Field(default=None, min_length=1)
     keyframes: list[Aleph2Keyframe] = Field(default_factory=list, max_length=5)
     seed: int = Field(default=-1, ge=-1, le=4_294_967_295)
@@ -1073,10 +1121,6 @@ class Aleph2VideoEditPayload(_StrictVideoPayload):
 
     @model_validator(mode="after")
     def validate_request(self) -> "Aleph2VideoEditPayload":
-        if not self.video_url.startswith(
-            ("http://", "https://", "data:video/mp4;", "data:video/quicktime;")
-        ):
-            raise ValueError("Aleph 2 video must be an HTTP(S) URL or MP4/MOV data URI")
         if self.prompt is not None:
             code_units = len(self.prompt.encode("utf-16-le")) // 2
             if code_units > 1000:
@@ -1094,7 +1138,8 @@ VideoEditRequest = Annotated[
     | KlingV3OmniVideoEditPayload
     | Wan27VideoEditPayload
     | Aleph2VideoEditPayload
-    | Flux3VideoEditPayload,
+    | Flux3VideoEditPayload
+    | OmniVideoEditPayload,
     Discriminator("model"),
 ]
 

@@ -250,6 +250,7 @@ class VideoEditInput(MCPToolInput):
     model: VideoEditModel = "seedance2"
     images: list[str] | None = None
     video: str | None = None
+    task_id: str | None = None
     audio: str | None = None
     duration: VideoEditDuration | None = None
     resolution: VideoEditResolution | None = None
@@ -658,6 +659,7 @@ def create_mcp_server(
             model=arguments.model,
             images=arguments.images or [],
             video=arguments.video,
+            task_id=arguments.task_id,
             audio=arguments.audio,
             duration=arguments.duration,
             resolution=arguments.resolution,

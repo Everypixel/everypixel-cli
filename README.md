@@ -4,13 +4,21 @@ Official command-line interface for the [Everypixel API](https://labs.everypixel
 Generate and edit images and videos, chat with GLM-5.3, work with audio, run
 visual analysis, and automate Everypixel workflows from a terminal or an MCP client.
 
-The CLI is designed for both people and agents: commands use readable terminal
-output by default and can return stable JSON for scripts and tool integrations.
+Commands return readable terminal output by default and JSON for scripts.
+The package includes a stdio MCP server for agent integrations.
 
-- [Everypixel Labs](https://labs.everypixel.com/)
-- [API documentation](https://labs.everypixel.com/docs)
-- [GitHub repository](https://github.com/everypixel/everypixel-cli)
-- [Issue tracker](https://github.com/everypixel/everypixel-cli/issues)
+[API documentation](https://labs.everypixel.com/docs) ·
+[GitHub](https://github.com/everypixel/everypixel-cli) ·
+[Issues](https://github.com/everypixel/everypixel-cli/issues) ·
+[Changelog](CHANGELOG.md)
+
+- [Quick start](#quick-start)
+- [Images](#images), [video](#video), [audio](#lipsync-and-audio), [chat](#chat), [analysis](#visual-analysis)
+- [Tasks and downloads](#async-tasks-and-downloads)
+- [JSON output](#json-output) and [generic API calls](#generic-openapi-runner)
+- [Authentication](#authentication) and [profiles](#configuration-profiles)
+- [MCP server](#mcp-server)
+- [Global options](#global-options), [exit codes](#exit-codes), [troubleshooting](#troubleshooting)
 
 ## Installation
 
@@ -29,43 +37,34 @@ epx --help
 
 ## Quick Start
 
-Create API credentials in your Everypixel Labs account, then save them in a
-local CLI profile:
+Create API credentials in your [Everypixel Labs account](https://labs.everypixel.com/).
+Run the interactive setup and enter the client ID and secret when prompted:
 
 ```bash
-everypixel auth configure \
-  --client-id "$EVERYPIXEL_CLIENT_ID" \
-  --client-secret "$EVERYPIXEL_CLIENT_SECRET"
-
+everypixel auth configure
 everypixel auth check
 ```
 
-Generate an image and download the completed result:
+Generate an image and save it locally:
 
 ```bash
-everypixel image generate \
-  "editorial product photo on a white background" \
-  --model flux2 \
-  --size square \
-  --download ./outputs
+everypixel image generate "editorial product photo on a white background" \
+  --model flux3 --download ./outputs
 ```
 
-The same command can return JSON for automation:
+Media commands wait for completion by default. See [Tasks and downloads](#async-tasks-and-downloads)
+for background jobs and [JSON output](#json-output) for scripts.
 
-```bash
-everypixel image generate \
-  "editorial product photo on a white background" \
-  --model flux2 \
-  --no-wait \
-  --output-json
-```
-
-Use `--help` on any command to see all supported models and options:
+Use `--help` for command syntax. To list image generation models, select their
+enum from OpenAPI:
 
 ```bash
 everypixel image generate --help
-everypixel video edit --help
+everypixel docs openapi --jq .components.schemas.ImageGenerateModelEnum.enum
 ```
+
+Examples use Bash syntax. Examples that extract IDs with `jq` require the
+separate `jq` command.
 
 ## Authentication
 
@@ -156,9 +155,10 @@ everypixel image generate "a detailed botanical illustration" \
   --model gpt-image-2.5-sunburst --quality high --download ./outputs
 ```
 
-Grok image models are `grok-imagine`, `grok-imagine-2`, and
-`grok-imagine-2-low`. The `grok` alias remains supported. `grok_quality` and
-`wan22` have been removed from the API.
+Other image models include `flux3`, `gemini-nano-banana-2.1` (Nano Banana 2.1),
+`gemini-3.1-flash-lite` (Nano Banana 2 Lite), and `seedream-5-flash`.
+Nano Banana 2 Lite uses `--resolution 1k`. Repeat `--image` to provide multiple
+inputs to an editing model.
 
 ### Video
 
@@ -170,57 +170,49 @@ Grok image models are `grok-imagine`, `grok-imagine-2`, and
 | `everypixel video edit` | Edit video with text and media references |
 | `everypixel video upscale` | Upscale a video, URL, or existing task result |
 
-Examples:
+Animate a local image or continue a video:
 
 ```bash
-everypixel video generate \
-  "a slow aerial shot over mountain lakes" \
-  --model ltx23 \
-  --duration 10 \
-  --resolution 720p \
-  --download ./outputs
-
-everypixel video from-image \
-  "subtle camera movement and natural wind" \
-  --image ./first-frame.png \
-  --model ltx23 \
-  --download ./outputs
-
-everypixel video edit \
-  "make the scene cinematic" \
-  --video ./input.mp4 \
-  --download ./outputs
-
-everypixel video generate "a slow aerial shot over mountain lakes" \
-  --model minimax-h3-turbo --duration 10 --download ./outputs
+everypixel video from-image "subtle camera movement and natural wind" \
+  --image ./first-frame.png --model ltx23 --download ./outputs
 
 everypixel video edit "continue the scene with a slow camera pan" \
   --model flux3 --video ./input.mp4 --download ./outputs
+```
 
+Generate a video with Gemini Omni 1.1 Flash, then edit the completed task:
+
+```bash
+task_id="$(
+  everypixel video generate "a slow aerial shot over mountain lakes" \
+    --model gemini-omni-1.1-flash --output-json | jq -er '.task_id'
+)"
+
+everypixel video edit "change the scene to sunset" \
+  --model gemini-omni-1.1-flash --task-id "$task_id" --download ./outputs
+```
+
+Gemini Omni editing requires an owned Gemini Omni source task. Other editing
+models accept `--task-id` as an alternative to `--video`.
+
+Input options depend on the model:
+
+- `first-last` accepts `--image` and `--last-image` for models that support frame pairs.
+- MiniMax and WAN 3.0 accept repeatable reference options, separately from frame inputs.
+  Use `--reference-image`, `--reference-video`, and, for MiniMax, `--reference-audio`.
+- Gemini Omni generation accepts frame images or `--reference-image`, separately.
+- Grok Imagine 1.5 (`grok-imagine-1.5`) requires `--image` and supports 1080p.
+- Aleph 2 accepts repeatable `--keyframe` JSON; inspect `video edit --help` for its fields.
+
+See the [API documentation](https://labs.everypixel.com/docs) for each model's
+accepted inputs, resolutions, and durations.
+
+For upscaling, use `seedvr2` (the default) or a Topaz model such as `topaz-prob-4`:
+
+```bash
 everypixel video upscale --video ./input.mp4 \
   --model topaz-prob-4 --resolution 4k --download ./outputs
 ```
-
-New video models use these provider defaults and limits:
-
-| Model | Duration | Default resolution / aspect ratio | Inputs |
-| --- | --- | --- | --- |
-| `minimax-h3-turbo`, `minimax-h3` | 3–15 s | 768p / 7:4 | Text, first/last frames, or up to 9 image, 3 video, and 3 audio references |
-| `wan3.0` | 2–30 s | 1080p / adaptive | Text, frames, or up to 10 reference images and 5 reference videos |
-| `flux3` | 5–20 s generation; 5–15 s continuation | 720p / 16:9 | Text, frames, or `video edit --video` for continuation |
-| `seedance2.5` | 4–30 s | 720p / 16:9 | Text or `video edit` references, including audio alone |
-
-Use repeatable `--reference-image`, `--reference-video`, and `--reference-audio`
-options for MiniMax references. References cannot be combined with first/last
-frames. WAN 3.0 also separates frame and reference inputs. Seedance 2.5 supports
-up to 1080p;
-Seedance 2 and Mini retain their 15-second limit. Grok video model names are
-`grok-imagine` and `grok-imagine-1.5` (image required); `grok` and `grok15`
-remain accepted aliases. The CLI's default video model remains `ltx23`.
-
-Topaz upscaling models are `topaz-prob-4`, `topaz-slp-2.5`, and `topaz-ast-2`.
-They support 4K output. The default `seedvr2` supports up to 1440p, with a
-20-second source limit at 1080p and a 10-second limit at 1440p, inclusive.
 
 ### Lipsync and Audio
 
@@ -236,47 +228,50 @@ They support 4K output. The default `seedvr2` supports up to 1440p, with a
 | `everypixel audio tts-voices` | List presets and saved voices |
 | `everypixel audio tts-delete` | Delete an owned saved voice |
 
-Lipsync supports 720p; the API checks source media dimensions and duration.
-
-Examples:
+Synchronize video, transcribe audio, or synthesize speech with a Qwen preset:
 
 ```bash
-everypixel lipsync video \
-  --video ./input.mp4 \
-  --audio ./voice.mp3 \
+everypixel lipsync video --video ./input.mp4 --audio ./voice.mp3 \
   --download ./outputs
 
-everypixel audio transcribe \
-  --audio ./speech.mp3 \
-  --language English \
+everypixel audio transcribe --audio ./speech.mp3 --language English \
   --download ./outputs
 
-everypixel audio tts-create \
-  --text "Hello world" \
-  --speaker Ryan \
-  --style Warm \
-  --language English \
-  --download ./outputs
+everypixel audio tts-create --model qwen3 --text "Hello world" \
+  --speaker Ryan --style Warm --language English --download ./outputs
 ```
 
-`tts-create` lets the API choose the model when `--model` is omitted.
-`tts-clone` and `tts-design` default to `--model qwen3`.
-`--speaker`, `--style`, `--language`, and `--seed` are Qwen controls; `--character` applies only to Qwen voice design.
-Qwen text is limited to 200 characters. ElevenLabs synthesis accepts up to
-2048 characters and requires `--voice-id`. Supported synthesis models are
-`eleven_v4`, `eleven_v4_turbo`, `eleven_v3`, `eleven_v3_conversational`,
-`eleven_multilingual_v2`, and `eleven_flash_v2_5`. ElevenLabs design uses
-`eleven_multilingual_ttv_v2` or `eleven_ttv_v3`, with 100–1000 characters of
-text and a 20–1000 character `--prompt`.
+`--speaker`, `--style`, `--language`, and `--seed` are Qwen controls;
+`--character` applies only to Qwen voice design. ElevenLabs synthesis uses
+`--voice-id` instead of preset controls. `tts-clone` and `tts-design` default
+to Qwen; `tts-create` lets the API choose when `--model` is omitted.
 
-Save a returned preview with `tts-voice --name "Narrator" --preview-id UUID`, or save local
-samples with `tts-voice --name "My voice" --provider elevenlabs --audio ./sample.wav`.
-`--audio` is repeatable for ElevenLabs; Qwen (`--provider labs`, the default)
-requires one sample. Saving returns a voice card immediately. Use its ID with
-`tts-create --model eleven_v3 --voice-id UUID --text "Hello"` or
-`tts-clone --voice-id UUID --text "Hello"`. List voices with
-`tts-voices --provider elevenlabs --offset 0 --limit 50`, and delete an owned
-voice with `tts-delete --voice-id UUID`.
+Design an ElevenLabs preview, save the first preview as a voice, and use it:
+
+```bash
+preview_id="$(
+  everypixel audio tts-design --model eleven_ttv_v3 \
+    --prompt "A warm, calm narrator with clear diction and a relaxed pace." \
+    --text "Welcome to our guided tour. Today we will explore the stories behind these photographs and the people who made them." \
+    --output-json | jq -er '.result.previews[0].preview_id'
+)"
+
+voice_id="$(
+  everypixel audio tts-voice --name "Narrator" --preview-id "$preview_id" \
+    --output-json | jq -er '.voice.id'
+)"
+
+everypixel audio tts-create --model eleven_v3 --voice-id "$voice_id" \
+  --text "Hello world" --download ./outputs
+```
+
+To save your own samples, use `tts-voice --name "My voice" --provider elevenlabs
+--audio ./sample.wav`; repeat `--audio` for more samples. Qwen uses
+`--provider labs` and one sample. Saved Qwen voices work with `tts-clone --voice-id`.
+
+List saved ElevenLabs voices with `everypixel audio tts-voices --provider elevenlabs`.
+See the [API documentation](https://labs.everypixel.com/docs) for model choices
+and text constraints.
 
 ### Chat
 
@@ -363,21 +358,6 @@ first observed `STARTED` response.
 API costs are USD strings: `estimated_cost` for pending tasks and `billed_cost`
 for successful results and chat. Missing costs are omitted; `"0"` means no charge.
 
-A Bash automation example:
-
-```bash
-task_id="$(
-  everypixel image generate \
-    "automation test image" \
-    --model flux2 \
-    --no-wait \
-    --output-json \
-    --jq .task_id | tr -d '"'
-)"
-
-everypixel --timeout 600 wait "$task_id" --download ./outputs
-```
-
 ## Generic OpenAPI Runner
 
 `everypixel run` calls an API operation by its OpenAPI name or `/v1/...` path.
@@ -397,6 +377,9 @@ everypixel run /v1/image_generate \
   --method POST \
   --input-file ./payload.json
 ```
+
+`--help-schema` shows the operation definition. Referenced component schemas
+are included in the full document returned by `docs openapi`.
 
 The schema loader tries the live API first, then the local cache, and finally
 the schema bundled with the package.
@@ -439,8 +422,9 @@ Global options must appear before the command they apply to.
 | `--no-color` | Disable colored terminal output |
 | `--debug` | Include sanitized diagnostic locations for internal errors |
 
-Many operation-specific options can also appear after their command. Run
-`everypixel COMMAND --help` for the exact syntax.
+Operation commands also accept common options such as `--download`, `--no-wait`,
+and `--output-json` after the command. Run `everypixel COMMAND --help` for the
+exact syntax.
 
 ## Configuration Profiles
 
@@ -450,10 +434,7 @@ projects. Most users can stay on the `default` profile.
 ```bash
 everypixel config profile create project-a
 everypixel config profile use project-a
-everypixel auth configure \
-  --client-id "$PROJECT_A_CLIENT_ID" \
-  --client-secret "$PROJECT_A_CLIENT_SECRET"
-
+everypixel auth configure
 everypixel config list
 ```
 

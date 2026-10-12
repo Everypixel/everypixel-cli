@@ -360,6 +360,7 @@ class _VideoEditInputs:
     model: str
     images: list[str]
     video: str | None
+    task_id: str | None
     audio: str | None
     duration: int | None
     resolution: str | None
@@ -421,6 +422,7 @@ def _build_content_video_edit_payload(
         {
             "prompt": inputs.prompt,
             "model": inputs.model,
+            "video_from_task_id": inputs.task_id,
             "duration": inputs.duration,
             "resolution": inputs.resolution,
             "aspect_ratio": inputs.aspect_ratio,
@@ -472,6 +474,7 @@ def _build_wan_video_edit_payload(inputs: _VideoEditInputs) -> dict[str, Any]:
         {
             "prompt": inputs.prompt,
             "model": inputs.model,
+            "video_from_task_id": inputs.task_id,
             "duration": inputs.duration,
             "resolution": inputs.resolution,
             "aspect_ratio": inputs.aspect_ratio,
@@ -498,6 +501,7 @@ def _build_flux3_video_edit_payload(inputs: _VideoEditInputs) -> dict[str, Any]:
         {
             "prompt": inputs.prompt,
             "model": inputs.model,
+            "video_from_task_id": inputs.task_id,
             "duration": inputs.duration,
             "resolution": inputs.resolution,
             "aspect_ratio": inputs.aspect_ratio,
@@ -536,6 +540,7 @@ def _build_aleph_video_edit_payload(inputs: _VideoEditInputs) -> dict[str, Any]:
         {
             "prompt": inputs.prompt,
             "model": inputs.model,
+            "video_from_task_id": inputs.task_id,
             "video_url": media_value(inputs.video) if inputs.video else None,
             "keyframes": [_parse_aleph_keyframe(value) for value in inputs.keyframes],
             "seed": inputs.seed,
@@ -546,7 +551,34 @@ def _build_aleph_video_edit_payload(inputs: _VideoEditInputs) -> dict[str, Any]:
     )
 
 
+def _build_omni_video_edit_payload(inputs: _VideoEditInputs) -> dict[str, Any]:
+    _reject_video_edit_options(
+        inputs.model,
+        {
+            "video": inputs.video,
+            "image": inputs.images,
+            "audio": inputs.audio,
+            "duration": inputs.duration,
+            "aspect_ratio": inputs.aspect_ratio,
+            "seed": inputs.seed,
+            "generate_audio": inputs.generate_audio,
+            "keyframe": inputs.keyframes,
+            "public_figure_threshold": inputs.public_figure_threshold,
+        },
+    )
+    return _validated_video_edit_payload(
+        {
+            "prompt": inputs.prompt,
+            "model": inputs.model,
+            "video_from_task_id": inputs.task_id,
+            "resolution": inputs.resolution,
+            "callback_url": inputs.callback_url,
+        }
+    )
+
+
 _VIDEO_EDIT_BUILDERS: dict[str, Callable[[_VideoEditInputs], dict[str, Any]]] = {
+    "gemini-omni-1.1-flash": _build_omni_video_edit_payload,
     "seedance2": _build_seedance_video_edit_payload,
     "seedance2-mini": _build_seedance_video_edit_payload,
     "seedance2.5": _build_seedance_video_edit_payload,
@@ -568,6 +600,7 @@ def build_video_edit_payload(
     aspect_ratio: str | None,
     generate_audio: bool | None,
     callback_url: str | None,
+    task_id: str | None = None,
     model: str = "seedance2",
     seed: int | None = None,
     keyframes: list[str] | None = None,
@@ -580,6 +613,7 @@ def build_video_edit_payload(
         model=model,
         images=images,
         video=video,
+        task_id=task_id,
         audio=audio,
         duration=duration,
         resolution=resolution,
@@ -1067,12 +1101,14 @@ class ApplicationServices:
         keyframes: list[str],
         public_figure_threshold: str | None,
         execution: ExecutionOptions,
+        task_id: str | None = None,
     ) -> OperationResult:
         payload = build_video_edit_payload(
             prompt=prompt,
             model=model,
             images=images,
             video=video,
+            task_id=task_id,
             audio=audio,
             duration=duration,
             resolution=resolution,

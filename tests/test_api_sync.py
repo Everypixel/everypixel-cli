@@ -39,6 +39,7 @@ def test_bundled_openapi_has_current_video_edit_contract():
         "kling-3-omni",
         "wan2.7",
         "aleph2",
+        "gemini-omni-1.1-flash",
         "flux3",
     }
     generate_schema = schema["paths"]["/v1/video_generate"]["post"]["requestBody"][
@@ -60,16 +61,27 @@ def test_bundled_openapi_has_current_video_edit_contract():
         "seedance2-mini",
         "wan2.7",
         "wan3.0",
-        "veo-3.1",
-        "veo-3.1-fast",
+        "gemini-omni-1.1-flash",
     }
     assert schema["components"]["schemas"]["Seedance2VideoGenRequest"]["properties"][
         "model"
     ]["enum"] == ["seedance2", "seedance2-mini", "seedance2.5"]
-    assert schema["components"]["schemas"]["VeoVideoGenRequest"]["properties"]["model"][
-        "enum"
-    ] == ["veo-3.1", "veo-3.1-fast"]
-    assert "Aleph2VideoEditRequest" in schema["components"]["schemas"]
+    assert (
+        schema["components"]["schemas"]["OmniVideoGenRequest"]["properties"]["model"][
+            "const"
+        ]
+        == "gemini-omni-1.1-flash"
+    )
+    components = schema["components"]["schemas"]
+    assert components["Grok15VideoResolutionEnum"]["enum"] == ["480p", "720p", "1080p"]
+    assert (
+        edit_schema["discriminator"]["mapping"]["gemini-omni-1.1-flash"]
+        == "#/components/schemas/OmniVideoEditRequest"
+    )
+    for component in edit_schema["discriminator"]["mapping"].values():
+        properties = components[component.rsplit("/", 1)[1]]["properties"]
+        assert "video_from_task_id" in properties
+    assert "Aleph2VideoEditRequest" in components
     assert set(generate_schema["discriminator"]["mapping"]) == set(
         get_args(VideoGenerateModel)
     ) - {"grok", "grok15"}
@@ -78,6 +90,7 @@ def test_bundled_openapi_has_current_video_edit_contract():
         "minimax-h3-turbo": "MiniMaxH3VideoGenRequest",
         "wan3.0": "Wan30VideoGenRequest",
         "flux3": "Flux3VideoGenRequest",
+        "gemini-omni-1.1-flash": "OmniVideoGenRequest",
         "seedance2.5": "Seedance2VideoGenRequest",
     }.items():
         assert generate_schema["discriminator"]["mapping"][model] == (
@@ -102,6 +115,7 @@ def test_bundled_openapi_has_current_image_enums_and_quality_ugc():
         "transparent",
     ]
     assert components["ImageGenerateModelEnum"]["enum"] == [
+        "flux3",
         "gpt-image-2",
         "gpt-image-2.5-sunburst",
         "zimage",
@@ -112,13 +126,17 @@ def test_bundled_openapi_has_current_image_enums_and_quality_ugc():
         "grok-imagine-2",
         "grok-imagine-2-low",
         "gemini-3.1-flash",
+        "gemini-nano-banana-2.1",
+        "gemini-3.1-flash-lite",
         "gemini-3-pro",
         "seedream-5-pro",
+        "seedream-5-flash",
         "seedream-5",
         "recraftv4_1_vector",
         "recraftv4_1_pro_vector",
     ]
     assert components["ImageEditModelEnum"]["enum"] == [
+        "flux3",
         "gpt-image-2",
         "gpt-image-2.5-sunburst",
         "flux2",
@@ -129,8 +147,11 @@ def test_bundled_openapi_has_current_image_enums_and_quality_ugc():
         "grok-imagine-2",
         "grok-imagine-2-low",
         "gemini-3.1-flash",
+        "gemini-nano-banana-2.1",
+        "gemini-3.1-flash-lite",
         "gemini-3-pro",
         "seedream-5-pro",
+        "seedream-5-flash",
         "seedream-5",
     ]
     assert components["ImageGenerateResolutionEnum"]["enum"] == [

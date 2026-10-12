@@ -302,7 +302,7 @@ def test_video_generate_wan_uses_reference_media_contract(
 
 
 @respx.mock
-def test_video_generate_veo_uses_reference_image_contract(monkeypatch):
+def test_video_generate_omni_uses_reference_image_contract(monkeypatch):
     route = respx.post("https://api.test/v1/video_generate").mock(
         return_value=pending_response()
     )
@@ -315,7 +315,9 @@ def test_video_generate_veo_uses_reference_image_contract(monkeypatch):
             "generate",
             "preserve the product",
             "--model",
-            "veo-3.1-fast",
+            "gemini-omni-1.1-flash",
+            "--duration",
+            "3",
             "--resolution",
             "4k",
             "--reference-image",
@@ -326,8 +328,8 @@ def test_video_generate_veo_uses_reference_image_contract(monkeypatch):
 
     assert result.exit_code == 0, result.output
     payload = json.loads(route.calls[0].request.content)
-    assert payload["model"] == "veo-3.1-fast"
-    assert payload["duration"] == 8
+    assert payload["model"] == "gemini-omni-1.1-flash"
+    assert payload["duration"] == 3
     assert payload["resolution"] == "4k"
     assert payload["reference_image_urls"][0].startswith("data:image/png;base64,")
 
@@ -857,3 +859,83 @@ def test_generic_run_video_edit_waits_and_downloads(monkeypatch, make_temp_dir):
 
     assert result.exit_code == 0, result.output
     assert json.loads(result.stdout)["downloaded"] == [str(target / "edit-123.mp4")]
+
+
+@pytest.mark.parametrize(
+    "model",
+    ["gemini-omni-1.1-flash", "seedance2", "kling-3-omni", "wan2.7", "aleph2", "flux3"],
+)
+@respx.mock
+def test_video_edit_owned_task_matches_generic_payload(model, monkeypatch):
+    route = respx.post("https://api.test/v1/video_edit").mock(
+        return_value=pending_response()
+    )
+    task_id = "11111111-2222-4333-8444-555555555555"
+    result = invoke(
+        [
+            "-j",
+            "--no-wait",
+            "video",
+            "edit",
+            "change the lighting",
+            "--model",
+            model,
+            "--task-id",
+            task_id,
+        ],
+        monkeypatch,
+    )
+    assert result.exit_code == 0, result.output
+    payload = json.loads(route.calls[-1].request.content)
+    assert payload["video_from_task_id"] == task_id
+    assert "video_url" not in payload
+    if model == "gemini-omni-1.1-flash":
+        assert payload == {
+            "model": model,
+            "prompt": "change the lighting",
+            "video_from_task_id": task_id,
+            "resolution": "720p",
+        }
+    result = invoke(
+        [
+            "-j",
+            "--no-wait",
+            "run",
+            "/v1/video_edit",
+            *[
+                part
+                for key, value in payload.items()
+                for part in ("--input", f"{key}={json.dumps(value)}")
+            ],
+        ],
+        monkeypatch,
+    )
+    assert result.exit_code == 0, result.output
+    assert json.loads(route.calls[-1].request.content) == payload
+
+
+@respx.mock
+def test_grok15_generates_1080p_from_local_image(monkeypatch):
+    route = respx.post("https://api.test/v1/video_generate").mock(
+        return_value=pending_response()
+    )
+    result = invoke(
+        [
+            "-j",
+            "--no-wait",
+            "video",
+            "from-image",
+            "pan left",
+            "--model",
+            "grok-imagine-1.5",
+            "--image",
+            str(FIXTURES / "sample.png"),
+            "--resolution",
+            "1080p",
+        ],
+        monkeypatch,
+    )
+    assert result.exit_code == 0, result.output
+    payload = json.loads(route.calls[-1].request.content)
+    assert payload["resolution"] == "1080p"
+    assert payload["image_url"].startswith("data:image/png;base64,")
