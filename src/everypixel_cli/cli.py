@@ -162,6 +162,10 @@ def positive_float(value: float) -> float:
 WaitOption = Annotated[
     Optional[bool], typer.Option("--wait/--no-wait", help="Override wait mode.")
 ]
+EstimateCostOption = Annotated[
+    bool,
+    typer.Option("--estimate-cost", help="Estimate USD cost without creating a task."),
+]
 DownloadOption = Annotated[
     Optional[Path],
     typer.Option("--download", "-d", help="Download result URLs into a directory."),
@@ -190,6 +194,7 @@ class Runtime:
     download: Path | None
     no_color: bool
     debug: bool
+    estimate_cost: bool = False
     _services: ApplicationServices | None = field(
         default=None,
         init=False,
@@ -223,6 +228,7 @@ class Runtime:
 
         return ExecutionOptions(
             wait=self.wait if wait is None else wait,
+            estimate_cost=self.estimate_cost,
             download_directory=self.download,
             timeout=self.timeout,
             poll_interval=self.poll_interval,
@@ -424,10 +430,13 @@ def apply_common_options(
     download: Path | None = None,
     output_json: bool = False,
     jq_expr: str | None = None,
+    estimate_cost: bool = False,
 ) -> Runtime:
     """Apply command-local common flags on top of global runtime settings."""
 
     runtime = get_runtime(ctx)
+    if estimate_cost:
+        runtime.estimate_cost = True
     if output_json or jq_expr is not None:
         runtime.output_json = True
     if jq_expr is not None:
@@ -679,6 +688,7 @@ def image_generate(
     ] = None,
     seed: Annotated[int, typer.Option("--seed")] = -1,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
+    estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
     output_json: OutputJsonOption = False,
@@ -688,6 +698,7 @@ def image_generate(
 
     runtime = apply_common_options(
         ctx,
+        estimate_cost=estimate_cost,
         wait_option=wait_option,
         download=download,
         output_json=output_json,
@@ -733,6 +744,7 @@ def image_edit(
     ] = None,
     seed: Annotated[int, typer.Option("--seed")] = -1,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
+    estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
     output_json: OutputJsonOption = False,
@@ -742,6 +754,7 @@ def image_edit(
 
     runtime = apply_common_options(
         ctx,
+        estimate_cost=estimate_cost,
         wait_option=wait_option,
         download=download,
         output_json=output_json,
@@ -769,6 +782,7 @@ def image_vectorize(
     ctx: typer.Context,
     image: Annotated[str, typer.Argument(help="Image URL or local path.")],
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
+    estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
     output_json: OutputJsonOption = False,
@@ -778,6 +792,7 @@ def image_vectorize(
 
     runtime = apply_common_options(
         ctx,
+        estimate_cost=estimate_cost,
         wait_option=wait_option,
         download=download,
         output_json=output_json,
@@ -800,6 +815,7 @@ def image_upscale(
     task_id: Annotated[Optional[str], typer.Option("--task-id")] = None,
     model: Annotated[str, typer.Option("--model")] = "seedvr2",
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
+    estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
     output_json: OutputJsonOption = False,
@@ -809,6 +825,7 @@ def image_upscale(
 
     runtime = apply_common_options(
         ctx,
+        estimate_cost=estimate_cost,
         wait_option=wait_option,
         download=download,
         output_json=output_json,
@@ -834,6 +851,7 @@ def image_angles(
     elevation: str = "eye_level",
     distance: str = "medium",
     prompt: Optional[str] = None,
+    estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
     output_json: OutputJsonOption = False,
@@ -843,6 +861,7 @@ def image_angles(
 
     runtime = apply_common_options(
         ctx,
+        estimate_cost=estimate_cost,
         wait_option=wait_option,
         download=download,
         output_json=output_json,
@@ -866,6 +885,7 @@ def image_colors(
     ctx: typer.Context,
     image: Annotated[str, typer.Option("--image")],
     reference: Annotated[str, typer.Option("--reference")],
+    estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
     output_json: OutputJsonOption = False,
@@ -875,6 +895,7 @@ def image_colors(
 
     runtime = apply_common_options(
         ctx,
+        estimate_cost=estimate_cost,
         wait_option=wait_option,
         download=download,
         output_json=output_json,
@@ -902,7 +923,10 @@ def video_generate(
         list[str],
         typer.Option(
             "--reference-image",
-            help="MiniMax, Wan or Omni reference image URL/path. Can be repeated.",
+            help=(
+                "MiniMax, Wan, Omni or Seedance reference image URL/path. "
+                "Can be repeated."
+            ),
         ),
     ] = [],
     reference_video: Annotated[
@@ -924,6 +948,7 @@ def video_generate(
         Optional[bool], typer.Option("--generate-audio/--no-generate-audio")
     ] = None,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
+    estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
     output_json: OutputJsonOption = False,
@@ -933,6 +958,7 @@ def video_generate(
 
     runtime = apply_common_options(
         ctx,
+        estimate_cost=estimate_cost,
         wait_option=wait_option,
         download=download,
         output_json=output_json,
@@ -1002,6 +1028,7 @@ def video_edit(
         Optional[bool], typer.Option("--generate-audio/--no-generate-audio")
     ] = None,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
+    estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
     output_json: OutputJsonOption = False,
@@ -1011,6 +1038,7 @@ def video_edit(
 
     runtime = apply_common_options(
         ctx,
+        estimate_cost=estimate_cost,
         wait_option=wait_option,
         download=download,
         output_json=output_json,
@@ -1052,6 +1080,7 @@ def video_from_image(
         Optional[bool], typer.Option("--generate-audio/--no-generate-audio")
     ] = None,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
+    estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
     output_json: OutputJsonOption = False,
@@ -1061,6 +1090,7 @@ def video_from_image(
 
     runtime = apply_common_options(
         ctx,
+        estimate_cost=estimate_cost,
         wait_option=wait_option,
         download=download,
         output_json=output_json,
@@ -1098,6 +1128,7 @@ def video_first_last(
         Optional[bool], typer.Option("--generate-audio/--no-generate-audio")
     ] = None,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
+    estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
     output_json: OutputJsonOption = False,
@@ -1107,6 +1138,7 @@ def video_first_last(
 
     runtime = apply_common_options(
         ctx,
+        estimate_cost=estimate_cost,
         wait_option=wait_option,
         download=download,
         output_json=output_json,
@@ -1147,6 +1179,7 @@ def video_upscale(
             ),
         ),
     ] = "1080p",
+    estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
     output_json: OutputJsonOption = False,
@@ -1160,6 +1193,7 @@ def video_upscale(
 
     runtime = apply_common_options(
         ctx,
+        estimate_cost=estimate_cost,
         wait_option=wait_option,
         download=download,
         output_json=output_json,
@@ -1187,6 +1221,7 @@ def lipsync_video(
     prompt: Optional[str] = None,
     seed: int = -1,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
+    estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
     output_json: OutputJsonOption = False,
@@ -1196,6 +1231,7 @@ def lipsync_video(
 
     runtime = apply_common_options(
         ctx,
+        estimate_cost=estimate_cost,
         wait_option=wait_option,
         download=download,
         output_json=output_json,
@@ -1225,6 +1261,7 @@ def lipsync_image(
     prompt: Optional[str] = None,
     seed: int = -1,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
+    estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
     output_json: OutputJsonOption = False,
@@ -1234,6 +1271,7 @@ def lipsync_image(
 
     runtime = apply_common_options(
         ctx,
+        estimate_cost=estimate_cost,
         wait_option=wait_option,
         download=download,
         output_json=output_json,
@@ -1261,6 +1299,7 @@ def audio_transcribe(
     language: str = "auto",
     hints: str = "",
     denoise: bool = True,
+    estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
     output_json: OutputJsonOption = False,
@@ -1270,6 +1309,7 @@ def audio_transcribe(
 
     runtime = apply_common_options(
         ctx,
+        estimate_cost=estimate_cost,
         wait_option=wait_option,
         download=download,
         output_json=output_json,
@@ -1299,6 +1339,7 @@ def tts_create(
     language: Optional[str] = None,
     prompt: Optional[str] = None,
     seed: Optional[int] = None,
+    estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
     output_json: OutputJsonOption = False,
@@ -1308,6 +1349,7 @@ def tts_create(
 
     runtime = apply_common_options(
         ctx,
+        estimate_cost=estimate_cost,
         wait_option=wait_option,
         download=download,
         output_json=output_json,
@@ -1340,6 +1382,7 @@ def tts_clone(
     model: str = "qwen3",
     language: Optional[str] = None,
     seed: Optional[int] = None,
+    estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
     output_json: OutputJsonOption = False,
@@ -1349,6 +1392,7 @@ def tts_clone(
 
     runtime = apply_common_options(
         ctx,
+        estimate_cost=estimate_cost,
         wait_option=wait_option,
         download=download,
         output_json=output_json,
@@ -1380,6 +1424,7 @@ def tts_design(
     language: Optional[str] = None,
     prompt: Optional[str] = None,
     seed: Optional[int] = None,
+    estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
     output_json: OutputJsonOption = False,
@@ -1389,6 +1434,7 @@ def tts_design(
 
     runtime = apply_common_options(
         ctx,
+        estimate_cost=estimate_cost,
         wait_option=wait_option,
         download=download,
         output_json=output_json,
@@ -1466,6 +1512,18 @@ def tts_delete(
     """Delete an owned saved voice."""
     runtime = apply_common_options(ctx, output_json=output_json, jq_expr=jq_expr)
     run_action(ctx, lambda: runtime.services().delete_tts_voice(voice_id=voice_id))
+
+
+@app.command("balance")
+def balance(
+    ctx: typer.Context,
+    output_json: OutputJsonOption = False,
+    jq_expr: JqOption = None,
+) -> None:
+    """Show the account balance in USD and the owner's email."""
+
+    runtime = apply_common_options(ctx, output_json=output_json, jq_expr=jq_expr)
+    run_action(ctx, lambda: runtime.services().get_balance())
 
 
 @app.command("status")
@@ -1631,6 +1689,7 @@ def generic_run(
     method: Annotated[Optional[str], typer.Option("--method")] = None,
     dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
     help_schema: Annotated[bool, typer.Option("--help-schema")] = False,
+    estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
     output_json: OutputJsonOption = False,
@@ -1640,6 +1699,7 @@ def generic_run(
 
     runtime = apply_common_options(
         ctx,
+        estimate_cost=estimate_cost,
         wait_option=wait_option,
         download=download,
         output_json=output_json,

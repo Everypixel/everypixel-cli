@@ -222,6 +222,7 @@ def test_seedance2_video_generation_contract():
         "resolution": "4k",
         "aspect_ratio": "21:9",
         "generate_audio": False,
+        "content": [],
     }
 
 
@@ -436,3 +437,36 @@ def test_video_edit_requires_visual_reference_and_limits_video_count():
                 },
             ],
         )
+
+
+@pytest.mark.parametrize(
+    "model,limit", [("seedance2", 9), ("seedance2-mini", 9), ("seedance2.5", 30)]
+)
+def test_seedance_generation_reference_limits_and_default_frame_role(model, limit):
+    image = {"image_url": {"url": "https://img.test/first.png"}}
+    frame = validate_video_generate(model=model, prompt="animate", content=[image])
+    assert frame.content[0].role == "first_frame"
+    references = [{**image, "role": "reference_image"}] * limit
+    validate_video_generate(model=model, prompt="animate", content=references)
+    with pytest.raises(ValidationError, match="reference images"):
+        validate_video_generate(
+            model=model, prompt="animate", content=[*references, references[0]]
+        )
+
+    invalid_content = [
+        [{"role": "last_frame", "image_url": {"url": "https://img.test/last.png"}}],
+        [{"image_url": {"url": "https://img.test/first.png"}}] * 2,
+        [
+            {"image_url": {"url": "https://img.test/first.png"}},
+            {
+                "role": "reference_image",
+                "image_url": {"url": "https://img.test/ref.png"},
+            },
+        ],
+        [{"image_url": {"url": "data:video/mp4;base64,aGVsbG8="}}],
+        [{"image_url": {"url": "not-a-url"}}],
+        [{"image_url": {"url": "https://img.test/first.png", "role": "first_frame"}}],
+    ]
+    for content in invalid_content:
+        with pytest.raises(ValidationError):
+            validate_video_generate(model=model, prompt="animate", content=content)

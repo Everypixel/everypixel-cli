@@ -26,6 +26,8 @@ class ExecutionOptions:
         compare=False,
     )
 
+    estimate_cost: bool = False
+
     @property
     def wait_for_result(self) -> bool:
         """Downloads always require a completed task."""

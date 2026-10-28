@@ -1,5 +1,7 @@
 import json
 
+import pytest
+from rich.text import Text
 from typer.testing import CliRunner
 
 from everypixel_cli.cli import app
@@ -83,10 +85,14 @@ def test_run_rejects_invalid_input_item_as_json_error():
     assert payload["error"]["message"] == "Invalid input item"
 
 
-def test_video_upscale_help_documents_seedvr2_duration_limits():
-    result = runner.invoke(app, ["video", "upscale", "--help"])
+@pytest.mark.parametrize("terminal_width", [80, 120])
+def test_video_upscale_help_documents_seedvr2_duration_limits(terminal_width):
+    result = runner.invoke(
+        app, ["video", "upscale", "--help"], terminal_width=terminal_width
+    )
 
     assert result.exit_code == 0
-    assert "1440p" in result.stdout
-    assert "20s at 1080p" in result.stdout
-    assert "10s at 1440p" in result.stdout
+    help_text = " ".join(Text.from_ansi(result.stdout).plain.replace("│", " ").split())
+    assert "1440p" in help_text
+    assert "20s at 1080p" in help_text
+    assert "10s at 1440p" in help_text

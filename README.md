@@ -103,6 +103,26 @@ CLI falls back to its user configuration file when a keyring is unavailable;
 
 ## Commands
 
+### Balance and cost estimates
+
+`everypixel balance` shows the account balance in USD and the owner's email.
+The balance is settled; recent usage may not yet be reflected.
+
+Add `--estimate-cost` to image, video, lipsync, transcription, or speech generation
+commands to estimate the request's USD cost without creating a task or consuming
+quota. Estimates include available free quota and personal rates; they do not
+reserve funds. Task polling and downloads are skipped for estimate responses.
+
+```bash
+everypixel balance --output-json
+everypixel image generate "a lake" --estimate-cost
+everypixel run image_generate --input prompt="a lake" --estimate-cost --output-json
+```
+
+`run --estimate-cost` supports the same API operations, including background
+removal, video matting, and video soundtrack generation. Chat, classic analysis,
+and saved voice management endpoints do not support cost estimation.
+
 ### Images
 
 | Command | Description |
@@ -200,7 +220,9 @@ Input options depend on the model:
 - `first-last` accepts `--image` and `--last-image` for models that support frame pairs.
 - MiniMax and WAN 3.0 accept repeatable reference options, separately from frame inputs.
   Use `--reference-image`, `--reference-video`, and, for MiniMax, `--reference-audio`.
-- Gemini Omni generation accepts frame images or `--reference-image`, separately.
+- Gemini Omni and Seedance generation accept frame images or `--reference-image`, separately.
+  Use `--model seedance2`, `seedance2-mini`, or `seedance2.5` with `from-image` or
+  `first-last`. Seedance 2.5 derives the aspect ratio from the first frame.
 - Grok Imagine 1.5 (`grok-imagine-1.5`) requires `--image` and supports 1080p.
 - Aleph 2 accepts repeatable `--keyframe` JSON; inspect `video edit --help` for its fields.
 

@@ -688,7 +688,7 @@ class OmniVideoGenRequest(_StrictVideoPayload):
         return self
 
 
-class Seedance2VideoGenRequest(_StrictVideoPayload):
+class Seedance2BaseVideoRequest(_StrictVideoPayload):
     prompt: str
     model: Literal["seedance2", "seedance2-mini", "seedance2.5"] = "seedance2"
     duration: int = Field(default=5, ge=4, le=30)
@@ -698,7 +698,7 @@ class Seedance2VideoGenRequest(_StrictVideoPayload):
     callback_url: str | None = None
 
     @model_validator(mode="after")
-    def validate_model_resolution(self) -> "Seedance2VideoGenRequest":
+    def validate_model_resolution(self) -> "Seedance2BaseVideoRequest":
         if self.model != "seedance2.5" and self.duration > 15:
             raise ValueError(f"{self.model} supports duration from 4 to 15 seconds")
         if self.model == "seedance2.5" and self.resolution == "4k":
@@ -708,6 +708,56 @@ class Seedance2VideoGenRequest(_StrictVideoPayload):
             "720p",
         }:
             raise ValueError("seedance2-mini supports only 480p and 720p")
+        return self
+
+
+class ProviderContentImageUrl(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    url: str
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, value: str) -> str:
+        if value.startswith("data:"):
+            if not re.fullmatch(
+                r"data:image/[a-zA-Z0-9.+\-]+;base64,[A-Za-z0-9+/]+=*", value
+            ):
+                raise ValueError("image_url requires an image base64 data URI")
+            return value
+        return str(HttpUrl(value))
+
+
+class Seedance2GenerationImage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["image_url"] = "image_url"
+    role: Literal["first_frame", "last_frame", "reference_image"] = "first_frame"
+    image_url: ProviderContentImageUrl
+
+
+class Seedance2VideoGenRequest(Seedance2BaseVideoRequest):
+    content: list[Seedance2GenerationImage] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_images(self) -> "Seedance2VideoGenRequest":
+        roles = [item.role for item in self.content]
+        first_count = roles.count("first_frame")
+        last_count = roles.count("last_frame")
+        reference_count = roles.count("reference_image")
+        if first_count > 1 or last_count > 1:
+            raise ValueError("Provide at most one first_frame and one last_frame")
+        if last_count and not first_count:
+            raise ValueError("last_frame requires first_frame")
+        if reference_count and (first_count or last_count):
+            raise ValueError(
+                "first_frame/last_frame cannot be mixed with reference_image"
+            )
+        max_references = 30 if self.model == "seedance2.5" else 9
+        if reference_count > max_references:
+            raise ValueError(
+                f"{self.model} supports at most {max_references} reference images"
+            )
         return self
 
 
@@ -943,7 +993,7 @@ VideoGenerateRequest = Annotated[
 ]
 
 
-class VideoEditPayload(VideoEditSourcePayload, Seedance2VideoGenRequest):
+class VideoEditPayload(VideoEditSourcePayload, Seedance2BaseVideoRequest):
     """JSON request body for Seedance ``video_edit`` operations."""
 
     content: list[dict[str, Any]] = Field(default_factory=list)

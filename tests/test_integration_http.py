@@ -2284,3 +2284,80 @@ def test_tts_design_downloads_all_previews_after_success(monkeypatch, make_temp_
     assert [call.request.url.host for call in respx.calls] == ["api.test"] * 3 + [
         "cdn.test"
     ] * 2
+
+
+@respx.mock
+def test_account_balance(monkeypatch):
+    expected = {"balance": 12.35, "currency": "USD", "email": "owner@example.com"}
+    route = respx.get("https://api.test/v1/account/balance").respond(200, json=expected)
+    assert invoke_json(["balance"], monkeypatch) == expected
+    assert route.call_count == 1
+    assert route.calls[0].request.headers["authorization"].startswith("Basic ")
+    assert not route.calls[0].request.url.query
+
+
+@pytest.mark.parametrize(
+    "args,path",
+    [
+        (["image", "generate", "a lake"], "image_generate"),
+        (["video", "generate", "a lake"], "video_generate"),
+        (["audio", "tts-create", "--text", "Hello"], "tts_create"),
+        (["run", "image_generate", "--input", "prompt=a lake"], "image_generate"),
+        (["run", "/v1/image_generate", "--input", "prompt=a lake"], "image_generate"),
+    ],
+)
+@respx.mock
+def test_estimate_cost_is_query_only_without_task_or_download(
+    args, path, monkeypatch, make_temp_dir
+):
+    respx.get("https://api.test/v1/openapi.json").respond(200, json=bundled_schema())
+    expected = {"estimated_cost": 0.0123, "currency": "USD"}
+    route = respx.post(f"https://api.test/v1/{path}").respond(200, json=expected)
+    directory = make_temp_dir("cost-estimate")
+    assert (
+        invoke_json(
+            [*args, "--estimate-cost", "--wait", "--download", str(directory)],
+            monkeypatch,
+        )
+        == expected
+    )
+    assert route.call_count == 1
+    request = route.calls[0].request
+    assert dict(request.url.params) == {"estimate_cost": "1"}
+    assert "estimate_cost" not in request_json(route)
+    assert list(directory.iterdir()) == []
+
+
+@respx.mock
+def test_generic_estimate_cost_dry_run_and_unsupported_endpoint(monkeypatch):
+    route = respx.post("https://api.test/v1/chat/completions").respond(200, json={})
+    preview = invoke_json(
+        [
+            "run",
+            "/v1/image_generate",
+            "--input",
+            "prompt=cat",
+            "--estimate-cost",
+            "--dry-run",
+        ],
+        monkeypatch,
+    )
+    assert preview["params"] == {"estimate_cost": 1}
+    assert "estimate_cost" not in preview["body"]
+    result = runner.invoke(
+        app,
+        [
+            "--base-url",
+            "https://api.test",
+            "-j",
+            "run",
+            "/v1/chat/completions",
+            "--input",
+            'messages=[{"role":"user","content":"hello"}]',
+            "--estimate-cost",
+        ],
+    )
+    assert result.exit_code == 2
+    assert json.loads(result.stdout)["error"]["code"] == "validation_error"
+    assert result.stderr == ""
+    assert not route.called

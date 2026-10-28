@@ -66,6 +66,43 @@ from .models import (
 )
 
 
+COST_ESTIMATE_ENDPOINTS = frozenset(
+    f"/v1/{name}"
+    for name in (
+        "image_vectorize",
+        "image_generate",
+        "image_upscale",
+        "image_remove_background",
+        "image_edit",
+        "image_edit_angles",
+        "image_edit_colors",
+        "video_lipsync",
+        "image_lipsync",
+        "video_generate",
+        "video_edit",
+        "video_upscale",
+        "video_matting",
+        "video_soundtrack",
+        "tts_design",
+        "tts_clone",
+        "tts_create",
+        "transcribe",
+    )
+)
+
+
+def estimate_cost_params(
+    endpoint: str, method: str, execution: ExecutionOptions
+) -> dict[str, Any]:
+    """Keep the quote flag in the query and reject unsupported operations."""
+
+    if not execution.estimate_cost:
+        return {}
+    if method.upper() != "POST" or endpoint not in COST_ESTIMATE_ENDPOINTS:
+        raise ValidationCLIError("estimate_cost is not supported for this endpoint")
+    return {"estimate_cost": 1}
+
+
 _VIDEO_GENERATE_ADAPTER: TypeAdapter[VideoGenerateRequest] = TypeAdapter(
     VideoGenerateRequest
 )
@@ -256,11 +293,14 @@ class OperationService:
         use_query = method == "GET" or (
             method == "DELETE" and request.endpoint == "/v1/tts_voice"
         )
+        params = estimate_cost_params(request.endpoint, method, request.execution)
+        if use_query:
+            params.update(payload)
         response = self.client.request(
             method,
             request.endpoint,
             json=None if use_query else payload,
-            params=payload if use_query else None,
+            params=params or None,
         )
         if not isinstance(response, Mapping) or "task_id" not in response:
             return OperationResult(value=response)
@@ -687,6 +727,30 @@ def build_image_upscale_payload(**values: Any) -> dict[str, Any]:
     ).model_dump(exclude_none=True)
 
 
+def _build_seedance_video_generate_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Translate CLI frame and reference options into Seedance image content."""
+
+    content = []
+    for key, role in (("image_url", "first_frame"), ("image_last_url", "last_frame")):
+        url = payload.pop(key, None)
+        if url is not None:
+            content.append(
+                {"type": "image_url", "role": role, "image_url": {"url": url}}
+            )
+    for url in payload.pop("reference_image_urls", []):
+        content.append(
+            {"type": "image_url", "role": "reference_image", "image_url": {"url": url}}
+        )
+    return {**payload, "content": content}
+
+
+_VIDEO_GENERATE_BUILDERS = {
+    "seedance2": _build_seedance_video_generate_payload,
+    "seedance2-mini": _build_seedance_video_generate_payload,
+    "seedance2.5": _build_seedance_video_generate_payload,
+}
+
+
 def build_video_generate_payload(**values: Any) -> dict[str, Any]:
     """Build text/image video generation payloads with typed model validation."""
 
@@ -725,6 +789,10 @@ def build_video_generate_payload(**values: Any) -> dict[str, Any]:
         payload["reference_audio_urls"] = [
             media_value(value) for value in reference_audios
         ]
+    model = payload.get("model")
+    builder = _VIDEO_GENERATE_BUILDERS.get(model) if isinstance(model, str) else None
+    if builder is not None:
+        payload = builder(payload)
     validated = _VIDEO_GENERATE_ADAPTER.validate_python(
         {key: value for key, value in payload.items() if value is not None}
     )
@@ -1498,12 +1566,14 @@ class ApplicationServices:
         if path == "/v1/tts_voices" and resolved_method == "GET":
             TTSVoicesPayload.model_validate(payload)
         validate_payload_against_operation(operation, payload)
+        params = estimate_cost_params(path, resolved_method, execution)
         if dry_run:
             return OperationResult(
                 value={
                     "method": resolved_method,
                     "path": path,
                     "body": payload,
+                    **({"params": params} if params else {}),
                     "headers": {
                         "Authorization": "Basic ***" if client_id_present else None
                     },
@@ -1585,6 +1655,13 @@ class ApplicationServices:
 
     def execute_video_keywords(self, *, video: str) -> OperationResult:
         return self._execute_classic(path="/v1/video_keywords", media=video)
+
+    def get_balance(self) -> OperationResult:
+        """Return the authenticated owner's settled USD balance."""
+
+        return self._operations.execute(
+            OperationRequest(endpoint="/v1/account/balance", method="GET", payload={})
+        )
 
     def check_auth(self) -> OperationResult:
         """Run an authentication check without a CLI dependency."""

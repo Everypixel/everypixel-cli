@@ -183,22 +183,55 @@ def test_grok_video_aliases(model, canonical, monkeypatch):
 
 @pytest.mark.parametrize(
     ("model", "duration", "resolution"),
-    [("seedance2", 15, "4k"), ("seedance2.5", 30, "1080p")],
+    [
+        ("seedance2", 15, "4k"),
+        ("seedance2-mini", 15, "720p"),
+        ("seedance2.5", 30, "1080p"),
+    ],
 )
+@pytest.mark.parametrize("mode", ["text", "first", "first-last", "references"])
 @respx.mock
 def test_video_generate_seedance2_uses_its_api_contract(
-    model, duration, resolution, monkeypatch
+    model, duration, resolution, mode, monkeypatch
 ):
     route = respx.post("https://api.test/v1/video_generate").mock(
         return_value=pending_response()
     )
+
+    from base64 import b64encode
+    from everypixel_cli.openapi import bundled_schema
+
+    first = str(FIXTURES / "sample.png")
+    encoded = "data:image/png;base64," + b64encode(Path(first).read_bytes()).decode()
+    last = "https://img.test/last.png"
+    command, media, content = "generate", [], []
+    if mode in {"first", "first-last"}:
+        command = "from-image" if mode == "first" else "first-last"
+        media = ["--image", first]
+        content = [
+            {"type": "image_url", "role": "first_frame", "image_url": {"url": encoded}}
+        ]
+        if mode == "first-last":
+            media += ["--last-image", last]
+            content.append(
+                {"type": "image_url", "role": "last_frame", "image_url": {"url": last}}
+            )
+    elif mode == "references":
+        media = ["--reference-image", first]
+        content = [
+            {
+                "type": "image_url",
+                "role": "reference_image",
+                "image_url": {"url": encoded},
+            }
+        ]
 
     result = invoke(
         [
             "--output-json",
             "--no-wait",
             "video",
-            "generate",
+            command,
             "city at night",
             "--model",
             model,
@@ -209,6 +242,7 @@ def test_video_generate_seedance2_uses_its_api_contract(
             "--aspect-ratio",
             "21:9",
             "--no-generate-audio",
+            *media,
         ],
         monkeypatch,
     )
@@ -221,7 +255,32 @@ def test_video_generate_seedance2_uses_its_api_contract(
         "resolution": resolution,
         "aspect_ratio": "21:9",
         "generate_audio": False,
+        "content": content,
     }
+
+    specialized = json.loads(route.calls[0].request.content)
+    generic = {
+        **specialized,
+        "content": [
+            {
+                **item,
+                "image_url": {
+                    "url": first if item["image_url"]["url"] == encoded else last
+                },
+            }
+            for item in content
+        ],
+    }
+    items = [
+        arg
+        for key, value in generic.items()
+        for arg in ("--input", f"{key}={json.dumps(value)}")
+    ]
+    respx.get("https://api.test/v1/openapi.json").respond(200, json=bundled_schema())
+    for endpoint in ("video_generate", "/v1/video_generate"):
+        result = invoke(["-j", "--no-wait", "run", endpoint, *items], monkeypatch)
+        assert result.exit_code == 0, result.output
+        assert json.loads(route.calls[-1].request.content) == specialized
 
 
 @respx.mock

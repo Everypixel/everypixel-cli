@@ -27,10 +27,12 @@ def test_bundled_openapi_has_current_video_edit_contract():
     operation = schema["paths"]["/v1/video_edit"]["post"]
     assert operation["operationId"] == "edit_video_v1_video_edit_post"
     assert set(operation["requestBody"]["content"]) == {"application/json"}
-    assert (
-        operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
-        == "#/components/schemas/TaskResponse"
-    )
+    assert operation["responses"]["200"]["content"]["application/json"]["schema"][
+        "anyOf"
+    ] == [
+        {"$ref": "#/components/schemas/TaskResponse"},
+        {"$ref": "#/components/schemas/CostEstimateResponse"},
+    ]
     edit_schema = operation["requestBody"]["content"]["application/json"]["schema"]
     assert set(edit_schema["discriminator"]["mapping"]) == {
         "seedance2",
@@ -99,6 +101,20 @@ def test_bundled_openapi_has_current_video_edit_contract():
     assert edit_schema["discriminator"]["mapping"]["flux3"] == (
         "#/components/schemas/Flux3VideoEditRequest"
     )
+    seedance = components["Seedance2VideoGenRequest"]
+    assert seedance["additionalProperties"] is False
+    assert seedance["properties"]["content"]["items"] == {
+        "$ref": "#/components/schemas/Seedance2GenerationImage"
+    }
+    image = components["Seedance2GenerationImage"]
+    assert image["additionalProperties"] is False
+    assert image["properties"]["role"]["default"] == "first_frame"
+    assert image["properties"]["role"]["enum"] == [
+        "first_frame",
+        "last_frame",
+        "reference_image",
+    ]
+    assert components["ProviderContentImageUrl"]["additionalProperties"] is False
     minimax = schema["components"]["schemas"]["MiniMaxH3VideoGenRequest"]
     for media_type, limit in (("image", 9), ("video", 3), ("audio", 3)):
         assert (
@@ -246,6 +262,7 @@ def test_bundled_openapi_has_current_dev_endpoints_and_content_refs():
         "seedvr2",
         "topaz-prob-4",
         "topaz-slp-2.5",
+        "topaz-slp-2.6",
         "topaz-ast-2",
     ]
     assert components["VideoUpscaleResolutionEnum"]["enum"] == [
@@ -328,3 +345,36 @@ def test_bundled_task_costs_are_optional_usd_strings():
                 {"type": "null"},
             ]
             assert field not in components[name]["required"]
+
+
+def test_bundled_balance_and_cost_estimation_contract():
+    from everypixel_cli.application.services import COST_ESTIMATE_ENDPOINTS
+
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    balance = schema["paths"]["/v1/account/balance"]["get"]
+    assert balance["operationId"] == "get_balance_v1_account_balance_get"
+    assert balance["responses"]["200"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/BalanceResponse"
+    }
+    assert schema["components"]["schemas"]["BalanceResponse"]["required"] == [
+        "balance",
+        "email",
+    ]
+    endpoints = set()
+    for path, methods in schema["paths"].items():
+        operation = methods.get("post", {})
+        flags = [
+            p for p in operation.get("parameters", []) if p["name"] == "estimate_cost"
+        ]
+        if not flags:
+            continue
+        endpoints.add(path)
+        assert flags[0]["in"] == "query"
+        assert flags[0]["schema"]["type"] == "boolean"
+        assert flags[0]["schema"]["default"] is False
+        assert {"$ref": "#/components/schemas/CostEstimateResponse"} in (
+            operation["responses"]["200"]["content"]["application/json"]["schema"][
+                "anyOf"
+            ]
+        )
+    assert endpoints == COST_ESTIMATE_ENDPOINTS

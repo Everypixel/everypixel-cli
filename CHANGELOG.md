@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.5.1] - 2026-10-28
+
+- Add account balance lookup and request cost estimation with `--estimate-cost`.
+- Support Seedance generation with first/last frames or reference images.
+
 ## [0.5.0] - 2026-10-12
 
 - Add FLUX.3 images, Nano Banana 2.1, Nano Banana 2 Lite, and Seedream 5 Flash.
