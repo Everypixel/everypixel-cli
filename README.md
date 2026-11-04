@@ -229,6 +229,23 @@ Input options depend on the model:
 See the [API documentation](https://labs.everypixel.com/docs) for each model's
 accepted inputs, resolutions, and durations.
 
+Seedance accepts `--seed` for generation and editing. For Seedance 2.5 previews,
+use `--draft`; resolution defaults to 480p. Once the draft succeeds, render its
+1080p final with `--draft-from-task-id` using the same command (`generate` or `edit`):
+
+```bash
+everypixel video generate "a cat walking through a garden" \
+  --model seedance2.5 --draft --seed 73 --output-json
+
+everypixel video generate --model seedance2.5 \
+  --draft-from-task-id DRAFT_TASK_UUID --download ./outputs
+```
+
+Finalization accepts only the model, draft task ID, resolution (1080p), and
+optional callback URL. It inherits the prompt, media, duration, aspect ratio,
+seed, and audio settings from the draft. Both stages are billed as separate
+tasks. `status` exposes the resolved seed, draft state, and draft expiry.
+
 For upscaling, use `seedvr2` (the default) or a Topaz model such as `topaz-prob-4`:
 
 ```bash

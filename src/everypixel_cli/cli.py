@@ -166,6 +166,14 @@ EstimateCostOption = Annotated[
     bool,
     typer.Option("--estimate-cost", help="Estimate USD cost without creating a task."),
 ]
+DraftOption = Annotated[
+    Optional[bool],
+    typer.Option("--draft/--no-draft", help="Seedance 2.5 preview at 480p."),
+]
+DraftFromTaskOption = Annotated[
+    Optional[str],
+    typer.Option("--draft-from-task-id", help="Render a Seedance 2.5 draft at 1080p."),
+]
 DownloadOption = Annotated[
     Optional[Path],
     typer.Option("--download", "-d", help="Download result URLs into a directory."),
@@ -914,7 +922,10 @@ def image_colors(
 @video_app.command("generate")
 def video_generate(
     ctx: typer.Context,
-    prompt: str,
+    prompt: Annotated[
+        Optional[str],
+        typer.Argument(help="Generation prompt; omit for draft finalization."),
+    ] = None,
     model: str = "ltx23",
     duration: Optional[int] = None,
     resolution: Optional[str] = None,
@@ -948,6 +959,8 @@ def video_generate(
         Optional[bool], typer.Option("--generate-audio/--no-generate-audio")
     ] = None,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
+    draft: DraftOption = None,
+    draft_from_task_id: DraftFromTaskOption = None,
     estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
@@ -967,6 +980,8 @@ def video_generate(
     run_action(
         ctx,
         lambda: runtime.services().execute_video_generate(
+            draft=draft,
+            draft_from_task_id=draft_from_task_id,
             prompt=prompt,
             model=model,
             duration=duration,
@@ -987,7 +1002,8 @@ def video_generate(
 def video_edit(
     ctx: typer.Context,
     prompt: Annotated[
-        Optional[str], typer.Argument(help="Edit prompt; optional for Aleph 2.")
+        Optional[str],
+        typer.Argument(help="Edit prompt; optional for Aleph 2 or draft finalization."),
     ] = None,
     model: Annotated[str, typer.Option("--model")] = "seedance2",
     image: Annotated[
@@ -1028,6 +1044,8 @@ def video_edit(
         Optional[bool], typer.Option("--generate-audio/--no-generate-audio")
     ] = None,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
+    draft: DraftOption = None,
+    draft_from_task_id: DraftFromTaskOption = None,
     estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
@@ -1047,6 +1065,8 @@ def video_edit(
     run_action(
         ctx,
         lambda: runtime.services().execute_video_edit(
+            draft=draft,
+            draft_from_task_id=draft_from_task_id,
             prompt=prompt,
             model=model,
             images=image,
@@ -1080,6 +1100,8 @@ def video_from_image(
         Optional[bool], typer.Option("--generate-audio/--no-generate-audio")
     ] = None,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
+    draft: DraftOption = None,
+    draft_from_task_id: DraftFromTaskOption = None,
     estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
@@ -1099,6 +1121,8 @@ def video_from_image(
     run_action(
         ctx,
         lambda: runtime.services().execute_video_generate(
+            draft=draft,
+            draft_from_task_id=draft_from_task_id,
             prompt=prompt,
             model=model,
             duration=duration,
@@ -1128,6 +1152,8 @@ def video_first_last(
         Optional[bool], typer.Option("--generate-audio/--no-generate-audio")
     ] = None,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
+    draft: DraftOption = None,
+    draft_from_task_id: DraftFromTaskOption = None,
     estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
     download: DownloadOption = None,
@@ -1147,6 +1173,8 @@ def video_first_last(
     run_action(
         ctx,
         lambda: runtime.services().execute_video_generate(
+            draft=draft,
+            draft_from_task_id=draft_from_task_id,
             prompt=prompt,
             model=model,
             duration=duration,

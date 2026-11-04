@@ -1854,6 +1854,41 @@
             "description": "Final accrued request cost in USD; settled later",
             "title": "Billed Cost"
           },
+          "draft": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft"
+          },
+          "draft_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft Expires At"
+          },
+          "draft_from_task_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft From Task Id"
+          },
           "error": {
             "anyOf": [
               {
@@ -1902,6 +1937,17 @@
               }
             ],
             "title": "Result"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
           },
           "status": {
             "title": "Status",
@@ -3267,6 +3313,23 @@
             "title": "Content",
             "type": "array"
           },
+          "draft": {
+            "default": false,
+            "title": "Draft",
+            "type": "boolean"
+          },
+          "draft_from_task_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft From Task Id"
+          },
           "duration": {
             "default": 5,
             "description": "Video duration in seconds (4-30)",
@@ -3291,12 +3354,20 @@
             "type": "string"
           },
           "prompt": {
+            "default": "",
             "title": "Prompt",
             "type": "string"
           },
           "resolution": {
             "$ref": "#/components/schemas/Seedance2VideoResolutionEnum",
             "default": "720p"
+          },
+          "seed": {
+            "default": -1,
+            "maximum": 4294967295.0,
+            "minimum": -1.0,
+            "title": "Seed",
+            "type": "integer"
           },
           "video_from_task_id": {
             "anyOf": [
@@ -3322,9 +3393,6 @@
             "title": "Video Url"
           }
         },
-        "required": [
-          "prompt"
-        ],
         "title": "Seedance2VideoEditRequest",
         "type": "object"
       },
@@ -3357,6 +3425,23 @@
             "title": "Content",
             "type": "array"
           },
+          "draft": {
+            "default": false,
+            "title": "Draft",
+            "type": "boolean"
+          },
+          "draft_from_task_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft From Task Id"
+          },
           "duration": {
             "default": 5,
             "description": "Video duration in seconds (4-30)",
@@ -3381,17 +3466,22 @@
             "type": "string"
           },
           "prompt": {
+            "default": "",
             "title": "Prompt",
             "type": "string"
           },
           "resolution": {
             "$ref": "#/components/schemas/Seedance2VideoResolutionEnum",
             "default": "720p"
+          },
+          "seed": {
+            "default": -1,
+            "maximum": 4294967295.0,
+            "minimum": -1.0,
+            "title": "Seed",
+            "type": "integer"
           }
         },
-        "required": [
-          "prompt"
-        ],
         "title": "Seedance2VideoGenRequest",
         "type": "object"
       },

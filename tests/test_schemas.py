@@ -223,6 +223,8 @@ def test_seedance2_video_generation_contract():
         "aspect_ratio": "21:9",
         "generate_audio": False,
         "content": [],
+        "seed": -1,
+        "draft": False,
     }
 
 

@@ -689,16 +689,46 @@ class OmniVideoGenRequest(_StrictVideoPayload):
 
 
 class Seedance2BaseVideoRequest(_StrictVideoPayload):
-    prompt: str
+    prompt: str = ""
     model: Literal["seedance2", "seedance2-mini", "seedance2.5"] = "seedance2"
     duration: int = Field(default=5, ge=4, le=30)
     resolution: Seedance2VideoResolution = "720p"
     aspect_ratio: Seedance2VideoAspectRatio = "16:9"
     generate_audio: bool = True
-    callback_url: str | None = None
+    seed: int = Field(default=-1, ge=-1, le=4_294_967_295)
+    draft: bool = False
+    draft_from_task_id: UUID | None = None
+    callback_url: HttpUrl | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_draft_request(cls, values: Any) -> Any:
+        if not isinstance(values, dict):
+            return values
+        values = dict(values)
+        if values.get("draft_from_task_id"):
+            allowed = {"model", "draft_from_task_id", "resolution", "callback_url"}
+            if values.keys() - allowed:
+                raise ValueError(
+                    "Draft finalization accepts only model, draft_from_task_id, "
+                    "resolution and callback_url"
+                )
+            if values.get("model") != "seedance2.5":
+                raise ValueError("Draft finalization requires seedance2.5")
+            values.setdefault("resolution", "1080p")
+            if values["resolution"] != "1080p":
+                raise ValueError("Draft finalization supports only 1080p")
+        else:
+            if "prompt" not in values:
+                raise ValueError("prompt is required")
+            if values.get("draft"):
+                values.setdefault("resolution", "480p")
+        return values
 
     @model_validator(mode="after")
     def validate_model_resolution(self) -> "Seedance2BaseVideoRequest":
+        if self.draft and (self.model != "seedance2.5" or self.resolution != "480p"):
+            raise ValueError("Draft mode requires seedance2.5 and 480p")
         if self.model != "seedance2.5" and self.duration > 15:
             raise ValueError(f"{self.model} supports duration from 4 to 15 seconds")
         if self.model == "seedance2.5" and self.resolution == "4k":
@@ -1002,6 +1032,8 @@ class VideoEditPayload(VideoEditSourcePayload, Seedance2BaseVideoRequest):
     def validate_content(self) -> "VideoEditPayload":
         """Mirror the documented structural validation before making a request."""
 
+        if self.draft_from_task_id:
+            return self
         video_count = 0
         has_visual = bool(self.video_url or self.video_from_task_id)
         has_audio = False

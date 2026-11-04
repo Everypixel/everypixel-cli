@@ -242,6 +242,8 @@ def test_video_generate_seedance2_uses_its_api_contract(
             "--aspect-ratio",
             "21:9",
             "--no-generate-audio",
+            "--seed",
+            "0",
             *media,
         ],
         monkeypatch,
@@ -256,6 +258,8 @@ def test_video_generate_seedance2_uses_its_api_contract(
         "aspect_ratio": "21:9",
         "generate_audio": False,
         "content": content,
+        "seed": 0,
+        "draft": False,
     }
 
     specialized = json.loads(route.calls[0].request.content)
@@ -406,6 +410,8 @@ def test_video_edit_posts_json_content_with_local_image(monkeypatch):
             "video",
             "edit",
             "make it cinematic",
+            "--seed",
+            "0",
             "--image",
             str(FIXTURES / "sample.png"),
         ],
@@ -416,6 +422,7 @@ def test_video_edit_posts_json_content_with_local_image(monkeypatch):
     assert route.calls[0].request.headers["content-type"].startswith("application/json")
     payload = json.loads(route.calls[0].request.content)
     assert payload["model"] == "seedance2"
+    assert payload["seed"] == 0
     assert payload["content"][0] == {"type": "text", "text": "make it cinematic"}
     assert payload["content"][1]["role"] == "reference_image"
     assert payload["content"][1]["image_url"]["url"].startswith(
@@ -847,6 +854,10 @@ def test_generic_run_video_edit_matches_specialized_payload(monkeypatch):
             "aspect_ratio=16:9",
             "-i",
             "generate_audio=true",
+            "-i",
+            "seed=-1",
+            "-i",
+            "draft=false",
         ],
         monkeypatch,
     )
@@ -998,3 +1009,193 @@ def test_grok15_generates_1080p_from_local_image(monkeypatch):
     payload = json.loads(route.calls[-1].request.content)
     assert payload["resolution"] == "1080p"
     assert payload["image_url"].startswith("data:image/png;base64,")
+
+
+@pytest.mark.parametrize("command", ["generate", "from-image", "first-last", "edit"])
+@respx.mock
+def test_seedance_draft_to_final_and_generic_parity(command, monkeypatch):
+    from everypixel_cli.openapi import bundled_schema
+
+    endpoint = "video_edit" if command == "edit" else "video_generate"
+    final_command = "edit" if command == "edit" else "generate"
+    draft_id = "11111111-2222-4333-8444-555555555555"
+    route = respx.post(f"https://api.test/v1/{endpoint}").respond(
+        200, json={"task_id": draft_id, "status": "PENDING"}
+    )
+    first = str(FIXTURES / "sample.png")
+    media = [] if command == "generate" else ["--image", first]
+    if command == "first-last":
+        media += ["--last-image", first]
+    result = invoke(
+        [
+            "-j",
+            "--no-wait",
+            "video",
+            command,
+            "animate",
+            "--model",
+            "seedance2.5",
+            "--draft",
+            "--seed",
+            "0",
+            *media,
+        ],
+        monkeypatch,
+    )
+    assert result.exit_code == 0, result.output
+    preview = json.loads(route.calls[-1].request.content)
+    assert preview["draft"] is True
+    assert preview["seed"] == 0
+    assert preview["resolution"] == "480p"
+    if media:
+        assert any(
+            item.get("image_url", {})
+            .get("url", "")
+            .startswith("data:image/png;base64,")
+            for item in preview["content"]
+        )
+
+    status = {
+        "task_id": draft_id,
+        "status": "SUCCESS",
+        "seed": 0,
+        "draft": True,
+        "draft_expires_at": "2026-11-18T08:00:00Z",
+    }
+    respx.get("https://api.test/v1/status").respond(200, json=status)
+    result = invoke(["-j", "status", draft_id], monkeypatch)
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout) == status
+
+    result = invoke(
+        [
+            "-j",
+            "--no-wait",
+            "video",
+            final_command,
+            "--model",
+            "seedance2.5",
+            "--draft-from-task-id",
+            draft_id,
+        ],
+        monkeypatch,
+    )
+    assert result.exit_code == 0, result.output
+    final = json.loads(route.calls[-1].request.content)
+    assert final == {
+        "model": "seedance2.5",
+        "draft_from_task_id": draft_id,
+        "resolution": "1080p",
+    }
+
+    respx.get("https://api.test/v1/openapi.json").respond(200, json=bundled_schema())
+    for payload in (preview, final):
+        items = [
+            arg
+            for key, value in payload.items()
+            for arg in ("-i", f"{key}={json.dumps(value)}")
+        ]
+        for path in (endpoint, f"/v1/{endpoint}"):
+            result = invoke(["-j", "--no-wait", "run", path, *items], monkeypatch)
+            assert result.exit_code == 0, result.output
+            assert json.loads(route.calls[-1].request.content) == payload
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["video", "generate", "animate", "--model", "seedance2", "--draft"],
+        [
+            "video",
+            "generate",
+            "animate",
+            "--model",
+            "seedance2.5",
+            "--draft",
+            "--resolution",
+            "720p",
+        ],
+        [
+            "video",
+            "generate",
+            "animate",
+            "--model",
+            "seedance2",
+            "--seed",
+            "4294967296",
+        ],
+        ["video", "generate", "--model", "seedance2.5"],
+        [
+            "video",
+            "generate",
+            "--model",
+            "seedance2.5",
+            "--draft-from-task-id",
+            "invalid",
+        ],
+        [
+            "video",
+            "generate",
+            "override",
+            "--model",
+            "seedance2.5",
+            "--draft-from-task-id",
+            "11111111-2222-4333-8444-555555555555",
+        ],
+        [
+            "video",
+            "edit",
+            "--model",
+            "seedance2.5",
+            "--draft-from-task-id",
+            "11111111-2222-4333-8444-555555555555",
+            "--seed",
+            "0",
+        ],
+        [
+            "video",
+            "edit",
+            "--model",
+            "seedance2.5",
+            "--draft-from-task-id",
+            "11111111-2222-4333-8444-555555555555",
+            "--no-draft",
+        ],
+        ["video", "generate", "animate", "--model", "ltx23", "--no-draft"],
+        [
+            "video",
+            "edit",
+            "--model",
+            "flux3",
+            "--draft-from-task-id",
+            "11111111-2222-4333-8444-555555555555",
+        ],
+        [
+            "run",
+            "/v1/video_generate",
+            "-i",
+            "model=seedance2.5",
+            "-i",
+            "draft_from_task_id=11111111-2222-4333-8444-555555555555",
+            "-i",
+            "draft=false",
+        ],
+        [
+            "run",
+            "/v1/video_edit",
+            "-i",
+            "model=seedance2.5",
+            "-i",
+            "draft_from_task_id=11111111-2222-4333-8444-555555555555",
+            "-i",
+            "content=[]",
+        ],
+    ],
+)
+@respx.mock
+def test_seedance_draft_options_reject_invalid_requests_before_http(args, monkeypatch):
+    result = invoke(["-j", "--no-wait", *args], monkeypatch)
+    assert result.exit_code == 2
+    assert json.loads(result.stdout)["error"]["code"] == "validation_error"
+    assert result.stderr == ""
+    assert not respx.calls

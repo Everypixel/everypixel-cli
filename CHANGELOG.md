@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.5.2] - 2026-11-04
+
+- Add Seedance seeds and Seedance 2.5 draft previews with final rendering.
+
 ## [0.5.1] - 2026-10-28
 
 - Add account balance lookup and request cost estimation with `--estimate-cost`.

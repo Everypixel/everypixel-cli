@@ -102,6 +102,15 @@ def test_bundled_openapi_has_current_video_edit_contract():
         "#/components/schemas/Flux3VideoEditRequest"
     )
     seedance = components["Seedance2VideoGenRequest"]
+    for name in ("Seedance2VideoGenRequest", "Seedance2VideoEditRequest"):
+        properties = components[name]["properties"]
+        assert properties["seed"]["minimum"] == -1
+        assert properties["seed"]["maximum"] == 4_294_967_295
+        assert properties["draft"]["default"] is False
+        assert properties["draft_from_task_id"]["anyOf"][0]["format"] == "uuid"
+    assert {"seed", "draft", "draft_from_task_id", "draft_expires_at"} <= (
+        components["ImgenStatusResponse"]["properties"].keys()
+    )
     assert seedance["additionalProperties"] is False
     assert seedance["properties"]["content"]["items"] == {
         "$ref": "#/components/schemas/Seedance2GenerationImage"

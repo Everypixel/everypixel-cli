@@ -34,6 +34,7 @@ from ..openapi import (
 )
 from ..schemas import (
     ChatRequest,
+    Seedance2BaseVideoRequest,
     TTS_CREATE_PAYLOADS,
     TTS_DESIGN_PAYLOADS,
     TTSClonePayload,
@@ -410,13 +411,30 @@ class _VideoEditInputs:
     callback_url: str | None
     keyframes: list[str]
     public_figure_threshold: str | None
+    draft: bool | None
+    draft_from_task_id: str | None
+
+
+def _serialize_video_payload(validated: BaseModel) -> dict[str, Any]:
+    """Finalization must not send inherited generation defaults back to the API."""
+
+    if (
+        isinstance(validated, Seedance2BaseVideoRequest)
+        and validated.draft_from_task_id
+    ):
+        return validated.model_dump(
+            mode="json",
+            exclude_none=True,
+            include={"model", "draft_from_task_id", "resolution", "callback_url"},
+        )
+    return validated.model_dump(mode="json", exclude_none=True)
 
 
 def _validated_video_edit_payload(values: Mapping[str, Any]) -> dict[str, Any]:
     validated = _VIDEO_EDIT_ADAPTER.validate_python(
         {key: value for key, value in values.items() if value is not None}
     )
-    return validated.model_dump(mode="json", exclude_none=True)
+    return _serialize_video_payload(validated)
 
 
 def _reject_video_edit_options(model: str, options: Mapping[str, Any]) -> None:
@@ -431,7 +449,11 @@ def _reject_video_edit_options(model: str, options: Mapping[str, Any]) -> None:
 
 
 def _build_content_video_edit_payload(
-    inputs: _VideoEditInputs, *, include_roles: bool
+    inputs: _VideoEditInputs,
+    *,
+    include_roles: bool,
+    provider_options: Mapping[str, Any] | None = None,
+    include_content: bool = True,
 ) -> dict[str, Any]:
     content: list[dict[str, Any]] = [{"type": "text", "text": inputs.prompt}]
     for value in inputs.images:
@@ -468,7 +490,8 @@ def _build_content_video_edit_payload(
             "aspect_ratio": inputs.aspect_ratio,
             "generate_audio": inputs.generate_audio,
             "callback_url": inputs.callback_url,
-            "content": content,
+            **({"content": content} if include_content else {}),
+            **(provider_options or {}),
         }
     )
 
@@ -479,12 +502,25 @@ def _build_seedance_video_edit_payload(
     _reject_video_edit_options(
         inputs.model,
         {
-            "seed": inputs.seed,
             "keyframe": inputs.keyframes,
             "public_figure_threshold": inputs.public_figure_threshold,
         },
     )
-    return _build_content_video_edit_payload(inputs, include_roles=True)
+    if inputs.draft_from_task_id is not None:
+        _reject_video_edit_options(
+            inputs.model,
+            {"image": inputs.images, "video": inputs.video, "audio": inputs.audio},
+        )
+    return _build_content_video_edit_payload(
+        inputs,
+        include_roles=True,
+        provider_options={
+            "seed": inputs.seed,
+            "draft": inputs.draft,
+            "draft_from_task_id": inputs.draft_from_task_id,
+        },
+        include_content=inputs.draft_from_task_id is None,
+    )
 
 
 def _build_kling_video_edit_payload(inputs: _VideoEditInputs) -> dict[str, Any]:
@@ -643,6 +679,8 @@ def build_video_edit_payload(
     task_id: str | None = None,
     model: str = "seedance2",
     seed: int | None = None,
+    draft: bool | None = None,
+    draft_from_task_id: str | None = None,
     keyframes: list[str] | None = None,
     public_figure_threshold: str | None = None,
 ) -> dict[str, Any]:
@@ -663,7 +701,13 @@ def build_video_edit_payload(
         callback_url=callback_url,
         keyframes=keyframes or [],
         public_figure_threshold=public_figure_threshold,
+        draft=draft,
+        draft_from_task_id=draft_from_task_id,
     )
+    if model not in {"seedance2", "seedance2-mini", "seedance2.5"}:
+        _reject_video_edit_options(
+            model, {"draft": draft, "draft_from_task_id": draft_from_task_id}
+        )
     builder = _VIDEO_EDIT_BUILDERS.get(model)
     if builder is None:
         raise ValidationCLIError(
@@ -741,6 +785,8 @@ def _build_seedance_video_generate_payload(payload: dict[str, Any]) -> dict[str,
         content.append(
             {"type": "image_url", "role": "reference_image", "image_url": {"url": url}}
         )
+    if payload.get("draft_from_task_id") is not None and not content:
+        return payload
     return {**payload, "content": content}
 
 
@@ -796,7 +842,7 @@ def build_video_generate_payload(**values: Any) -> dict[str, Any]:
     validated = _VIDEO_GENERATE_ADAPTER.validate_python(
         {key: value for key, value in payload.items() if value is not None}
     )
-    return validated.model_dump(mode="json", exclude_none=True)
+    return _serialize_video_payload(validated)
 
 
 def build_video_upscale_payload(**values: Any) -> dict[str, Any]:
@@ -1115,7 +1161,7 @@ class ApplicationServices:
     def execute_video_generate(
         self,
         *,
-        prompt: str,
+        prompt: str | None,
         model: str,
         duration: int | None,
         resolution: str | None,
@@ -1128,9 +1174,13 @@ class ApplicationServices:
         seed: int | None = None,
         generate_audio: bool | None = None,
         callback_url: str | None = None,
+        draft: bool | None = None,
+        draft_from_task_id: str | None = None,
         execution: ExecutionOptions,
     ) -> OperationResult:
         payload = build_video_generate_payload(
+            draft=draft,
+            draft_from_task_id=draft_from_task_id,
             prompt=prompt,
             model=model,
             duration=duration,
@@ -1168,10 +1218,14 @@ class ApplicationServices:
         callback_url: str | None,
         keyframes: list[str],
         public_figure_threshold: str | None,
+        draft: bool | None = None,
+        draft_from_task_id: str | None = None,
         execution: ExecutionOptions,
         task_id: str | None = None,
     ) -> OperationResult:
         payload = build_video_edit_payload(
+            draft=draft,
+            draft_from_task_id=draft_from_task_id,
             prompt=prompt,
             model=model,
             images=images,
