@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.6.0] - 2026-11-16
+
+- Add GPT Image 2.6 Sunburst with format, compression, and animation controls.
+- Add HeyGen Avatar 4, video lipsync, translation, and voice/language catalogs.
+
 ## [0.5.2] - 2026-11-04
 
 - Add Seedance seeds and Seedance 2.5 draft previews with final rendering.

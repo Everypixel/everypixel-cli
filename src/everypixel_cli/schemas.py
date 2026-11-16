@@ -35,7 +35,9 @@ ImageSize = Literal[
 ImageStyle = Literal["portrait", "transparent"]
 ImageResolution = Literal["1k", "2k", "3k", "4k"]
 ImageQuality = Literal["low", "medium", "high", "xhigh", "max"]
-GPTImageModel = Literal["gpt-image-2", "gpt-image-2.5-sunburst"]
+GPTImageModel = Literal[
+    "gpt-image-2", "gpt-image-2.5-sunburst", "gpt-image-2.6-sunburst"
+]
 RasterImageGenerateModel = Literal[
     GPTImageModel,
     "flux3",
@@ -75,44 +77,14 @@ ImageEditModel = Literal[
     "seedream-5",
 ]
 
-_GEMINI_IMAGE_MODELS = {
-    "gemini-3.1-flash",
-    "gemini-3-pro",
-    "gemini-nano-banana-2.1",
-    "gemini-3.1-flash-lite",
-}
-_GROK_IMAGE_MODELS = {"grok-imagine", "grok-imagine-2", "grok-imagine-2-low"}
 RecraftVectorModel = Literal["recraftv4_1_vector", "recraftv4_1_pro_vector"]
 ImageGenerateModel = Literal[RasterImageGenerateModel, RecraftVectorModel]
-_WAN_IMAGE_MODELS = {"wan2.7", "wan2.7-pro"}
-_SEEDREAM_IMAGE_MODELS = {"seedream-5-pro", "seedream-5", "seedream-5-flash"}
 GPT_IMAGE_MODEL_QUALITIES = {
     "gpt-image-2": ("low", "medium", "high"),
     "gpt-image-2.5-sunburst": ("low", "medium", "high", "xhigh", "max"),
+    "gpt-image-2.6-sunburst": ("low", "medium", "high", "xhigh", "max"),
 }
-_IMAGE_EDIT_MODEL_MAX_IMAGES = {
-    "flux2": 5,
-    "flux3": 10,
-    "gemini-nano-banana-2.1": 14,
-    "gemini-3.1-flash-lite": 14,
-    "seedream-5-flash": 10,
-    "qwen": 3,
-    "wan2.7": 9,
-    "wan2.7-pro": 9,
-    "grok-imagine": 3,
-    "grok-imagine-2": 3,
-    "grok-imagine-2-low": 3,
-    "gemini-3.1-flash": 14,
-    "gemini-3-pro": 14,
-    "seedream-5-pro": 10,
-    "seedream-5": 14,
-    "gpt-image-2": 16,
-    "gpt-image-2.5-sunburst": 16,
-}
-ImageEditMedia = Annotated[
-    list[str],
-    Field(min_length=1, max_length=max(_IMAGE_EDIT_MODEL_MAX_IMAGES.values())),
-]
+ImageEditMedia = Annotated[list[str], Field(min_length=1, max_length=16)]
 
 
 class TaskResponse(BaseModel):
@@ -147,6 +119,16 @@ def normalize_image_quality(value: Any) -> Any:
         return value
     value = dict(value)
     model = value.get("model")
+    if model != "gpt-image-2.6-sunburst" and value.keys() & {
+        "complexity",
+        "output_format",
+        "output_compression",
+        "frame_count",
+        "frame_duration_ms",
+    }:
+        raise ValueError(
+            "Output controls and complexity require GPT Image 2.6 Sunburst"
+        )
     if isinstance(model, str) and model in GPT_IMAGE_MODEL_QUALITIES:
         quality = value.get("quality", "medium")
         if quality not in GPT_IMAGE_MODEL_QUALITIES[model]:
@@ -186,7 +168,7 @@ class RecraftGeneratePayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     prompt: str = Field(min_length=1, max_length=10_000)
-    model: RecraftVectorModel
+    model: RecraftVectorModel = "recraftv4_1_vector"
     image_size: ImageSize = "square"
     seed: int = Field(default=-1, ge=-1, le=4_294_967_295)
     controls: RecraftControls | None = None
@@ -203,202 +185,312 @@ class ImageVectorizePayload(BaseModel):
         return self
 
 
-class ImageGeneratePayload(BaseModel):
-    """Payload for image generation."""
-
+class _ImageRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     prompt: str
-    model: RasterImageGenerateModel = "zimage"
-    image_size: ImageSize = "square"
-    style: ImageStyle | None = None
-    resolution: ImageResolution = "1k"
-    quality: ImageQuality | None = None
+    callback_url: HttpUrl | None = None
     seed: int = -1
+
+
+class _ImageGenerateRequest(_ImageRequest):
+    image_size: ImageSize = "square"
+
+
+class _TextOnlyImageGenerateRequest(_ImageGenerateRequest):
+    @model_validator(mode="before")
+    @classmethod
+    def reject_reference_image(cls, values: Any) -> Any:
+        if isinstance(values, dict) and values.get("image_url") is not None:
+            raise ValueError(
+                "image_url is not supported for this model; use image edit"
+            )
+        return values
+
+
+class _ImageEditRequest(_ImageRequest):
+    image_urls: list[str] = Field(min_length=1)
+    image_size: ImageSize | None = None
+
+    @field_validator("image_urls")
+    @classmethod
+    def validate_images(cls, values: list[str]) -> list[str]:
+        for value in values:
+            validate_frame_inputs(value, None)
+        return values
+
+
+class _LocalImageGenerateRequest(_ImageGenerateRequest):
+    resolution: ImageResolution = "1k"
     image_url: str | None = None
     lora_url: HttpUrl | None = None
-    callback_url: str | None = None
 
-    @model_validator(mode="before")
+    @field_validator("image_url")
     @classmethod
-    def normalize_model(cls, value: Any) -> Any:
-        return normalize_image_quality(normalize_grok_model(value))
-
-    @model_validator(mode="after")
-    def validate_model_constraints(self) -> "ImageGeneratePayload":
-        """Validate provider-specific styles, inputs, and resolutions."""
-
-        style = self.style
-        if style is None and self.model == "zimage":
-            self.style = "portrait"
-        if style is not None:
-            expected_models = {
-                "portrait": "zimage",
-                "transparent": "flux2",
-            }
-            if self.model != expected_models[style]:
-                raise ValueError(
-                    f"Model {self.model} is not compatible with style {style}"
-                )
-
-        if self.model in _GROK_IMAGE_MODELS and self.resolution not in {
-            "1k",
-            "2k",
-        }:
-            raise ValueError(
-                f"resolution {self.resolution} is not supported by model {self.model}"
-            )
-        if self.model in _WAN_IMAGE_MODELS:
-            if not 1 <= len(self.prompt) <= 5000:
-                raise ValueError(
-                    "Wan 2.7 prompt must contain between 1 and 5000 characters"
-                )
-            if not -1 <= self.seed <= 2_147_483_647:
-                raise ValueError("Wan 2.7 seed must be -1 or between 0 and 2147483647")
-            if self.image_url is not None:
-                raise ValueError(
-                    "image is not supported for Wan 2.7 image generate; use image edit"
-                )
-            if "resolution" not in self.model_fields_set:
-                self.resolution = "2k"
-            supported_resolutions = {"1k", "2k"}
-            if self.model == "wan2.7-pro":
-                supported_resolutions.add("4k")
-            if self.resolution not in supported_resolutions:
-                raise ValueError(
-                    f"resolution {self.resolution} is not supported by model "
-                    f"{self.model}"
-                )
-        if self.model == "gemini-3.1-flash-lite" and self.resolution != "1k":
-            raise ValueError("gemini-3.1-flash-lite supports only 1k")
-        if self.model in (_GEMINI_IMAGE_MODELS | {"flux3"}) and self.resolution not in {
-            "1k",
-            "2k",
-            "4k",
-        }:
-            raise ValueError(
-                f"resolution {self.resolution} is not supported by model {self.model}"
-            )
-        if self.model == "flux3" and self.image_url is not None:
-            raise ValueError(
-                "FLUX.3 image generate does not accept image; use image edit"
-            )
-        if self.model in GPT_IMAGE_MODEL_QUALITIES:
-            if self.image_url is not None:
-                raise ValueError(
-                    "image is not supported for GPT Image image generate; "
-                    "use image edit"
-                )
-            if self.resolution not in {"1k", "2k", "3k"}:
-                raise ValueError(
-                    f"resolution {self.resolution} is not supported by model "
-                    f"{self.model}"
-                )
-            if self.resolution == "3k" and self.image_size != "square":
-                raise ValueError("GPT Image 3k supports only square image_size")
-        if self.model in _SEEDREAM_IMAGE_MODELS:
-            if self.image_url is not None:
-                raise ValueError(
-                    "image is not supported for Seedream image generate; use image edit"
-                )
-            if "resolution" not in self.model_fields_set:
-                self.resolution = "2k"
-            supported_resolutions_by_model = {
-                "seedream-5-pro": {"1k", "2k"},
-                "seedream-5-flash": {"1k", "2k"},
-                "seedream-5": {"2k", "3k", "4k"},
-            }
-            if self.resolution not in supported_resolutions_by_model[self.model]:
-                raise ValueError(
-                    f"resolution {self.resolution} is not supported by model "
-                    f"{self.model}"
-                )
-        return self
+    def validate_image(cls, value: str | None) -> str | None:
+        validate_frame_inputs(value, None)
+        return value
 
 
-class ImageEditPayload(BaseModel):
-    """Payload for image editing."""
+class ZImageGeneratePayload(_LocalImageGenerateRequest):
+    model: Literal["zimage"] = "zimage"
+    style: Literal["portrait"] = "portrait"
 
-    prompt: str
-    image_urls: ImageEditMedia
-    model: ImageEditModel = "flux2"
-    image_size: ImageSize | None = None
-    resolution: ImageResolution = "1k"
-    quality: ImageQuality | None = None
+    @field_validator("style", mode="before")
+    @classmethod
+    def default_style(cls, value: Any) -> Any:
+        return "portrait" if value is None else value
+
+
+class Flux2ImageGeneratePayload(_LocalImageGenerateRequest):
+    model: Literal["flux2"] = "flux2"
+    style: Literal["transparent"] | None = None
+
+
+class Flux2ImageEditPayload(_ImageEditRequest):
+    model: Literal["flux2"] = "flux2"
+    image_urls: list[str] = Field(min_length=1, max_length=5)
     megapixel_ratio: float = Field(default=1.0, ge=0.5, le=1.5)
-    seed: int = -1
-    callback_url: str | None = None
 
-    @model_validator(mode="before")
-    @classmethod
-    def normalize_model(cls, value: Any) -> Any:
-        return normalize_image_quality(normalize_grok_model(value))
+
+class QwenImageEditPayload(_ImageEditRequest):
+    model: Literal["qwen"] = "qwen"
+    image_urls: list[str] = Field(min_length=1, max_length=3)
+    megapixel_ratio: float = Field(default=1.0, ge=0.5, le=1.5)
+
+
+class Flux3ImageGeneratePayload(_TextOnlyImageGenerateRequest):
+    model: Literal["flux3"] = "flux3"
+    resolution: Literal["1k", "2k", "4k"] = "1k"
+
+
+class Flux3ImageEditPayload(_ImageEditRequest):
+    model: Literal["flux3"] = "flux3"
+    resolution: Literal["1k", "2k", "4k"] = "1k"
+    image_urls: list[str] = Field(min_length=1, max_length=10)
+
+
+class GrokImageGeneratePayload(_ImageGenerateRequest):
+    model: Literal["grok-imagine", "grok-imagine-2", "grok-imagine-2-low"] = (
+        "grok-imagine"
+    )
+    resolution: Literal["1k", "2k"] = "1k"
+
+
+class GrokImageEditPayload(_ImageEditRequest):
+    model: Literal["grok-imagine", "grok-imagine-2", "grok-imagine-2-low"] = (
+        "grok-imagine"
+    )
+    resolution: Literal["1k", "2k"] = "1k"
+    image_urls: list[str] = Field(min_length=1, max_length=3)
+
+
+class GeminiImageGeneratePayload(_ImageGenerateRequest):
+    model: Literal["gemini-3.1-flash", "gemini-nano-banana-2.1", "gemini-3-pro"] = (
+        "gemini-3.1-flash"
+    )
+    resolution: Literal["1k", "2k", "4k"] = "1k"
+
+
+class GeminiImageEditPayload(_ImageEditRequest):
+    model: Literal["gemini-3.1-flash", "gemini-nano-banana-2.1", "gemini-3-pro"] = (
+        "gemini-3.1-flash"
+    )
+    resolution: Literal["1k", "2k", "4k"] = "1k"
+    image_urls: list[str] = Field(min_length=1, max_length=14)
+
+
+class GeminiFlashLiteImageGeneratePayload(_ImageGenerateRequest):
+    model: Literal["gemini-3.1-flash-lite"] = "gemini-3.1-flash-lite"
+    resolution: Literal["1k"] = "1k"
+
+
+class GeminiFlashLiteImageEditPayload(_ImageEditRequest):
+    model: Literal["gemini-3.1-flash-lite"] = "gemini-3.1-flash-lite"
+    resolution: Literal["1k"] = "1k"
+    image_urls: list[str] = Field(min_length=1, max_length=14)
+
+
+class SeedreamImageGeneratePayload(_TextOnlyImageGenerateRequest):
+    model: Literal["seedream-5-pro", "seedream-5-flash"] = "seedream-5-pro"
+    resolution: Literal["1k", "2k"] = "2k"
+
+
+class SeedreamImageEditPayload(_ImageEditRequest):
+    model: Literal["seedream-5-pro", "seedream-5-flash"] = "seedream-5-pro"
+    resolution: Literal["1k", "2k"] = "2k"
+    image_urls: list[str] = Field(min_length=1, max_length=10)
+
+
+class Seedream5ImageGeneratePayload(_TextOnlyImageGenerateRequest):
+    model: Literal["seedream-5"] = "seedream-5"
+    resolution: Literal["2k", "3k", "4k"] = "2k"
+
+
+class Seedream5ImageEditPayload(_ImageEditRequest):
+    model: Literal["seedream-5"] = "seedream-5"
+    resolution: Literal["2k", "3k", "4k"] = "2k"
+    image_urls: list[str] = Field(min_length=1, max_length=14)
+
+
+class _WanImageSettings(BaseModel):
+    prompt: str = Field(min_length=1, max_length=5000)
+    seed: int = Field(default=-1, ge=-1, le=2_147_483_647)
+
+
+class Wan27ImageGeneratePayload(_WanImageSettings, _TextOnlyImageGenerateRequest):
+    model: Literal["wan2.7"] = "wan2.7"
+    resolution: Literal["1k", "2k"] = "2k"
+
+
+class Wan27ProImageGeneratePayload(_WanImageSettings, _TextOnlyImageGenerateRequest):
+    model: Literal["wan2.7-pro"] = "wan2.7-pro"
+    resolution: Literal["1k", "2k", "4k"] = "2k"
+
+
+class Wan27ImageEditPayload(_WanImageSettings, _ImageEditRequest):
+    model: Literal["wan2.7", "wan2.7-pro"] = "wan2.7"
+    resolution: Literal["1k", "2k"] = "2k"
+    image_urls: list[str] = Field(min_length=1, max_length=9)
+
+
+class _GPTImageGenerateRequest(_TextOnlyImageGenerateRequest):
+    resolution: Literal["1k", "2k", "3k"] = "1k"
+    quality: ImageQuality = "medium"
 
     @model_validator(mode="after")
-    def validate_model_limits(self) -> "ImageEditPayload":
-        """Validate image count limits for the selected model."""
-
-        max_images = _IMAGE_EDIT_MODEL_MAX_IMAGES.get(self.model)
-        if max_images is None:
-            raise ValueError(f"image edit model {self.model} has no configured limit")
-        if len(self.image_urls) > max_images:
-            raise ValueError(f"{self.model} supports a maximum of {max_images} images")
-
-        if self.model in _GROK_IMAGE_MODELS and self.resolution not in {
-            "1k",
-            "2k",
-        }:
-            raise ValueError(
-                f"resolution {self.resolution} is not supported by model {self.model}"
-            )
-        if self.model in _WAN_IMAGE_MODELS:
-            if not 1 <= len(self.prompt) <= 5000:
-                raise ValueError(
-                    "Wan 2.7 prompt must contain between 1 and 5000 characters"
-                )
-            if not -1 <= self.seed <= 2_147_483_647:
-                raise ValueError("Wan 2.7 seed must be -1 or between 0 and 2147483647")
-            if "resolution" not in self.model_fields_set:
-                self.resolution = "2k"
-            if self.resolution not in {"1k", "2k"}:
-                raise ValueError(
-                    f"resolution {self.resolution} is not supported by model "
-                    f"{self.model}"
-                )
-        if self.model == "gemini-3.1-flash-lite" and self.resolution != "1k":
-            raise ValueError("gemini-3.1-flash-lite supports only 1k")
-        if self.model in (_GEMINI_IMAGE_MODELS | {"flux3"}) and self.resolution not in {
-            "1k",
-            "2k",
-            "4k",
-        }:
-            raise ValueError(
-                f"resolution {self.resolution} is not supported by model {self.model}"
-            )
-        if self.model in _SEEDREAM_IMAGE_MODELS:
-            if "resolution" not in self.model_fields_set:
-                self.resolution = "2k"
-            supported = {
-                "seedream-5-pro": {"1k", "2k"},
-                "seedream-5-flash": {"1k", "2k"},
-                "seedream-5": {"2k", "3k", "4k"},
-            }
-            if self.resolution not in supported[self.model]:
-                raise ValueError(
-                    f"resolution {self.resolution} is not supported by model "
-                    f"{self.model}"
-                )
-        if self.model in GPT_IMAGE_MODEL_QUALITIES:
-            if self.resolution not in {"1k", "2k", "3k"}:
-                raise ValueError(
-                    f"resolution {self.resolution} is not supported by model "
-                    f"{self.model}"
-                )
-            if self.image_size is None:
-                self.image_size = "square"
-            if self.resolution == "3k" and self.image_size != "square":
-                raise ValueError("GPT Image 3k supports only square image_size")
+    def validate_square_3k(self) -> "_GPTImageGenerateRequest":
+        if self.resolution == "3k" and self.image_size != "square":
+            raise ValueError("GPT Image 3k supports only square image_size")
         return self
+
+
+class _GPTImageEditRequest(_GPTImageGenerateRequest, _ImageEditRequest):
+    image_urls: list[str] = Field(min_length=1, max_length=16)
+    image_size: ImageSize = "square"
+
+    @field_validator("image_size", mode="before")
+    @classmethod
+    def default_size(cls, value: Any) -> Any:
+        return "square" if value is None else value
+
+
+class GPTImage2GeneratePayload(_GPTImageGenerateRequest):
+    model: Literal["gpt-image-2"] = "gpt-image-2"
+    quality: Literal["low", "medium", "high"] = "medium"
+
+
+class GPTImage2EditPayload(_GPTImageEditRequest):
+    model: Literal["gpt-image-2"] = "gpt-image-2"
+    quality: Literal["low", "medium", "high"] = "medium"
+
+
+class GPTImage25GeneratePayload(_GPTImageGenerateRequest):
+    model: Literal["gpt-image-2.5-sunburst"] = "gpt-image-2.5-sunburst"
+
+
+class GPTImage25EditPayload(_GPTImageEditRequest):
+    model: Literal["gpt-image-2.5-sunburst"] = "gpt-image-2.5-sunburst"
+
+
+class GPTImage26GeneratePayload(_GPTImageGenerateRequest):
+    """GPT Image 2.6 has dedicated output and animation controls."""
+
+    model: Literal["gpt-image-2.6-sunburst"] = "gpt-image-2.6-sunburst"
+    complexity: Literal["low", "medium", "high"] | None = None
+    output_format: Literal["png", "jpeg", "webp", "gif", "svg"] = "png"
+    output_compression: int | None = Field(default=None, ge=0, le=100, strict=True)
+    frame_count: int | None = Field(default=None, ge=2, le=16, strict=True)
+    frame_duration_ms: int | None = Field(default=None, ge=20, le=2000, strict=True)
+
+    @model_validator(mode="after")
+    def validate_output(self) -> "GPTImage26GeneratePayload":
+        if self.output_compression is not None and self.output_format not in {
+            "jpeg",
+            "webp",
+        }:
+            raise ValueError("output_compression requires jpeg or webp output_format")
+        if self.output_format != "gif" and (
+            self.frame_count is not None or self.frame_duration_ms is not None
+        ):
+            raise ValueError(
+                "frame_count and frame_duration_ms require gif output_format"
+            )
+        if self.output_format == "gif" and self.model_fields_set & {
+            "resolution",
+            "image_size",
+        }:
+            raise ValueError(
+                "GIF uses automatic frame sizing; omit resolution and image_size"
+            )
+        return self
+
+
+class GPTImage26EditPayload(GPTImage26GeneratePayload, _GPTImageEditRequest):
+    image_size: ImageSize = "square"
+    image_urls: ImageEditMedia
+    output_format: Literal["png", "jpeg", "webp", "gif"] = "png"
+
+    @field_validator("image_size", mode="before")
+    @classmethod
+    def default_size(cls, value: Any) -> Any:
+        return "square" if value is None else value
+
+
+def normalize_image_generate(values: Any) -> Any:
+    values = normalize_image_quality(normalize_grok_model(values))
+    if isinstance(values, dict) and "model" not in values:
+        values = dict(values)
+        style = values.get("style")
+        values["model"] = (
+            {"portrait": "zimage", "transparent": "flux2"}.get(style, "zimage")
+            if isinstance(style, str)
+            else "zimage"
+        )
+    return values
+
+
+def normalize_image_edit(values: Any) -> Any:
+    values = normalize_image_quality(normalize_grok_model(values))
+    if isinstance(values, dict) and "model" not in values:
+        values = {**values, "model": "flux2"}
+    return values
+
+
+ImageGeneratePayload = Annotated[
+    ZImageGeneratePayload
+    | Flux2ImageGeneratePayload
+    | Flux3ImageGeneratePayload
+    | GrokImageGeneratePayload
+    | GeminiImageGeneratePayload
+    | GeminiFlashLiteImageGeneratePayload
+    | SeedreamImageGeneratePayload
+    | Seedream5ImageGeneratePayload
+    | Wan27ImageGeneratePayload
+    | Wan27ProImageGeneratePayload
+    | RecraftGeneratePayload
+    | GPTImage2GeneratePayload
+    | GPTImage25GeneratePayload
+    | GPTImage26GeneratePayload,
+    Discriminator("model"),
+    BeforeValidator(normalize_image_generate),
+]
+ImageEditPayload = Annotated[
+    Flux2ImageEditPayload
+    | QwenImageEditPayload
+    | Flux3ImageEditPayload
+    | GrokImageEditPayload
+    | GeminiImageEditPayload
+    | GeminiFlashLiteImageEditPayload
+    | SeedreamImageEditPayload
+    | Seedream5ImageEditPayload
+    | Wan27ImageEditPayload
+    | GPTImage2EditPayload
+    | GPTImage25EditPayload
+    | GPTImage26EditPayload,
+    Discriminator("model"),
+    BeforeValidator(normalize_image_edit),
+]
 
 
 class _StrictChatPayload(BaseModel):
@@ -695,7 +787,7 @@ class Seedance2BaseVideoRequest(_StrictVideoPayload):
     resolution: Seedance2VideoResolution = "720p"
     aspect_ratio: Seedance2VideoAspectRatio = "16:9"
     generate_audio: bool = True
-    seed: int = Field(default=-1, ge=-1, le=4_294_967_295)
+    seed: int = Field(default=-1, ge=-1, le=2_147_483_647)
     draft: bool = False
     draft_from_task_id: UUID | None = None
     callback_url: HttpUrl | None = None
@@ -1246,7 +1338,8 @@ class ImageUpscalePayload(BaseModel):
 VideoUpscaleResolution = Literal["720p", "1080p", "1440p", "4k"]
 VideoUpscaleModel = Literal["seedvr2", "topaz-prob-4", "topaz-slp-2.5", "topaz-ast-2"]
 LipsyncVideoResolution = Literal["360p", "480p", "720p"]
-LipsyncImageModel = Literal["inftalk", "ltx23"]
+LipsyncImageModel = Literal["inftalk", "ltx23", "heygen-avatar-4"]
+LipsyncVideoModel = Literal["inftalk", "heygen-speed", "heygen-precision"]
 LipsyncImageResolution = Literal["360p", "480p", "720p"]
 
 
@@ -1281,6 +1374,7 @@ class LipsyncVideoPayload(BaseModel):
 
     video_url: str
     audio_url: str
+    model: LipsyncVideoModel = "inftalk"
     resolution: LipsyncVideoResolution = "480p"
     prompt: str | None = None
     seed: int = -1
@@ -1290,13 +1384,73 @@ class LipsyncVideoPayload(BaseModel):
 class LipsyncImagePayload(BaseModel):
     """Payload for lipsync from a still image and audio."""
 
+    model_config = ConfigDict(extra="forbid")
+
     image_url: str
     audio_url: str
-    model: LipsyncImageModel = "inftalk"
+    model: Literal["inftalk", "ltx23"] = "inftalk"
     resolution: LipsyncImageResolution = "480p"
     prompt: str | None = None
     seed: int = -1
     callback_url: str | None = None
+
+
+class HeyGenImageLipsyncPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model: Literal["heygen-avatar-4"]
+    image_url: str
+    audio_url: str | None = None
+    text: str | None = Field(default=None, min_length=1, max_length=10000)
+    voice_id: str | None = Field(default=None, min_length=1)
+    resolution: Literal["720p", "1080p"] = "1080p"
+    aspect_ratio: Literal["auto", "16:9", "9:16", "4:5", "5:4", "1:1"] = "auto"
+    prompt: str | None = None
+    expressiveness: Literal["low", "medium", "high"] = "low"
+    callback_url: HttpUrl | None = None
+
+    @model_validator(mode="after")
+    def validate_speech(self) -> "HeyGenImageLipsyncPayload":
+        validate_frame_inputs(self.image_url, None)
+        if self.audio_url is not None:
+            validate_tts_media(self.audio_url)
+            if self.text is not None or self.voice_id is not None:
+                raise ValueError("audio_url cannot be combined with text or voice_id")
+        elif (
+            not self.text
+            or not self.text.strip()
+            or not self.voice_id
+            or not self.voice_id.strip()
+        ):
+            raise ValueError("Provide audio_url or text with voice_id")
+        return self
+
+
+class VideoTranslatePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    video_url: str
+    output_language: str = Field(min_length=1, max_length=100)
+    model: Literal["heygen-speed", "heygen-precision"] = "heygen-speed"
+    callback_url: HttpUrl | None = None
+
+    @field_validator("video_url")
+    @classmethod
+    def validate_video(cls, value: str) -> str:
+        return validate_tts_media(value)
+
+    @field_validator("output_language")
+    @classmethod
+    def validate_language(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("output_language cannot be empty")
+        return value.strip()
+
+
+class HeyGenVoicesPayload(BaseModel):
+    language: str | None = None
+    limit: int = Field(default=20, ge=1, le=100)
+    token: str | None = None
 
 
 TTSSpeaker = Literal[

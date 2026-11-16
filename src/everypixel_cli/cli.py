@@ -678,7 +678,7 @@ def image_generate(
     ctx: typer.Context,
     prompt: str,
     model: Annotated[str, typer.Option("--model")] = "zimage",
-    size: Annotated[str, typer.Option("--size")] = "square",
+    size: Annotated[Optional[str], typer.Option("--size")] = None,
     style: Annotated[Optional[str], typer.Option("--style")] = None,
     image: Annotated[Optional[str], typer.Option("--image")] = None,
     lora_url: Annotated[Optional[str], typer.Option("--lora-url")] = None,
@@ -691,9 +691,18 @@ def image_generate(
         Optional[str],
         typer.Option(
             "--quality",
-            help="GPT Image quality: low, medium, high; 2.5 also xhigh, max.",
+            help="GPT Image quality: low, medium, high; 2.5/2.6 also xhigh, max.",
         ),
     ] = None,
+    complexity: Annotated[
+        Optional[str], typer.Option(help="GPT Image 2.6 planning complexity.")
+    ] = None,
+    output_format: Annotated[
+        Optional[str], typer.Option(help="GPT Image 2.6 output format.")
+    ] = None,
+    output_compression: Optional[int] = None,
+    frame_count: Optional[int] = None,
+    frame_duration_ms: Optional[int] = None,
     seed: Annotated[int, typer.Option("--seed")] = -1,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
     estimate_cost: EstimateCostOption = False,
@@ -724,6 +733,11 @@ def image_generate(
             controls=controls,
             resolution=resolution,
             quality=quality,
+            complexity=complexity,
+            output_format=output_format,
+            output_compression=output_compression,
+            frame_count=frame_count,
+            frame_duration_ms=frame_duration_ms,
             seed=seed,
             callback_url=callback_url,
             execution=runtime.execution_options(),
@@ -742,14 +756,25 @@ def image_edit(
     model: Annotated[str, typer.Option("--model")] = "flux2",
     size: Annotated[Optional[str], typer.Option("--size")] = None,
     resolution: Annotated[Optional[str], typer.Option("--resolution")] = None,
-    megapixel_ratio: Annotated[float, typer.Option("--megapixel-ratio")] = 1.0,
+    megapixel_ratio: Annotated[
+        Optional[float], typer.Option("--megapixel-ratio")
+    ] = None,
     quality: Annotated[
         Optional[str],
         typer.Option(
             "--quality",
-            help="GPT Image quality: low, medium, high; 2.5 also xhigh, max.",
+            help="GPT Image quality: low, medium, high; 2.5/2.6 also xhigh, max.",
         ),
     ] = None,
+    complexity: Annotated[
+        Optional[str], typer.Option(help="GPT Image 2.6 planning complexity.")
+    ] = None,
+    output_format: Annotated[
+        Optional[str], typer.Option(help="GPT Image 2.6 output format.")
+    ] = None,
+    output_compression: Optional[int] = None,
+    frame_count: Optional[int] = None,
+    frame_duration_ms: Optional[int] = None,
     seed: Annotated[int, typer.Option("--seed")] = -1,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
     estimate_cost: EstimateCostOption = False,
@@ -778,6 +803,11 @@ def image_edit(
             resolution=resolution,
             megapixel_ratio=megapixel_ratio,
             quality=quality,
+            complexity=complexity,
+            output_format=output_format,
+            output_compression=output_compression,
+            frame_count=frame_count,
+            frame_duration_ms=frame_duration_ms,
             seed=seed,
             callback_url=callback_url,
             execution=runtime.execution_options(),
@@ -1245,6 +1275,7 @@ def lipsync_video(
     ctx: typer.Context,
     video: Annotated[str, typer.Option("--video")],
     audio: Annotated[str, typer.Option("--audio")],
+    model: Optional[str] = None,
     resolution: str = "480p",
     prompt: Optional[str] = None,
     seed: int = -1,
@@ -1268,6 +1299,7 @@ def lipsync_video(
     run_action(
         ctx,
         lambda: runtime.services().execute_lipsync_video(
+            model=model,
             video=video,
             audio=audio,
             resolution=resolution,
@@ -1283,11 +1315,15 @@ def lipsync_video(
 def lipsync_image(
     ctx: typer.Context,
     image: Annotated[str, typer.Option("--image")],
-    audio: Annotated[str, typer.Option("--audio")],
+    audio: Annotated[Optional[str], typer.Option("--audio")] = None,
     model: str = "inftalk",
-    resolution: str = "480p",
+    resolution: Optional[str] = None,
+    text: Optional[str] = None,
+    voice_id: Optional[str] = None,
+    aspect_ratio: Optional[str] = None,
+    expressiveness: Optional[str] = None,
     prompt: Optional[str] = None,
-    seed: int = -1,
+    seed: Optional[int] = None,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,
     estimate_cost: EstimateCostOption = False,
     wait_option: WaitOption = None,
@@ -1310,12 +1346,82 @@ def lipsync_image(
         lambda: runtime.services().execute_lipsync_image(
             image=image,
             audio=audio,
+            text=text,
+            voice_id=voice_id,
+            aspect_ratio=aspect_ratio,
+            expressiveness=expressiveness,
             model=model,
             resolution=resolution,
             prompt=prompt,
             seed=seed,
             callback_url=callback_url,
             execution=runtime.execution_options(),
+        ),
+    )
+
+
+@video_app.command("translate")
+def video_translate(
+    ctx: typer.Context,
+    video: Annotated[str, typer.Option("--video")],
+    output_language: Annotated[str, typer.Option("--output-language")],
+    model: str = "heygen-speed",
+    callback_url: Optional[str] = None,
+    estimate_cost: EstimateCostOption = False,
+    wait_option: WaitOption = None,
+    download: DownloadOption = None,
+    output_json: OutputJsonOption = False,
+    jq_expr: JqOption = None,
+) -> None:
+    """Translate a video to one target language using HeyGen."""
+    runtime = apply_common_options(
+        ctx,
+        estimate_cost=estimate_cost,
+        wait_option=wait_option,
+        download=download,
+        output_json=output_json,
+        jq_expr=jq_expr,
+    )
+    run_action(
+        ctx,
+        lambda: runtime.services().execute_video_translate(
+            video=video,
+            output_language=output_language,
+            model=model,
+            callback_url=callback_url,
+            execution=runtime.execution_options(),
+        ),
+    )
+
+
+@video_app.command("translation-languages")
+def translation_languages(
+    ctx: typer.Context,
+    output_json: OutputJsonOption = False,
+    jq_expr: JqOption = None,
+) -> None:
+    """List supported HeyGen translation languages."""
+    runtime = apply_common_options(ctx, output_json=output_json, jq_expr=jq_expr)
+    run_action(ctx, lambda: runtime.services().list_translation_languages())
+
+
+@lipsync_app.command("heygen-voices")
+def heygen_voices(
+    ctx: typer.Context,
+    language: Optional[str] = None,
+    limit: int = 20,
+    token: Optional[str] = None,
+    output_json: OutputJsonOption = False,
+    jq_expr: JqOption = None,
+) -> None:
+    """List public HeyGen voices, optionally filtered by language."""
+    runtime = apply_common_options(ctx, output_json=output_json, jq_expr=jq_expr)
+    run_action(
+        ctx,
+        lambda: runtime.services().list_heygen_voices(
+            language=language,
+            limit=limit,
+            token=token,
         ),
     )
 

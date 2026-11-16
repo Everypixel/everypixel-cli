@@ -94,6 +94,8 @@ def test_grok_image_models_and_generic_aliases(model, canonical, monkeypatch):
         ("gpt-image-2", "low", "low"),
         ("gpt-image-2", "medium", "medium"),
         ("gpt-image-2", "high", "high"),
+        ("gpt-image-2.6-sunburst", None, "medium"),
+        ("gpt-image-2.6-sunburst", "max", "max"),
         ("gpt-image-2.5-sunburst", None, "medium"),
         ("gpt-image-2.5-sunburst", "xhigh", "xhigh"),
         ("gpt-image-2.5-sunburst", "max", "max"),
@@ -1092,6 +1094,8 @@ def test_wan_image_generate_uses_provider_default_resolution(monkeypatch):
 @pytest.mark.parametrize(
     ("model", "count", "resolution", "size"),
     [
+        ("flux2", 5, None, None),
+        ("qwen", 3, None, None),
         ("gpt-image-2.5-sunburst", 16, "3k", "square"),
         ("gemini-3-pro", 14, "4k", None),
         ("flux3", 10, "4k", None),
@@ -1118,20 +1122,21 @@ def test_image_edit_accepts_expanded_input_limits(
             ],
             "--model",
             model,
-            "--resolution",
-            resolution,
-            "--megapixel-ratio",
-            "1.5",
+            *(["--resolution", resolution] if resolution is not None else []),
         ],
         monkeypatch,
     )
 
     body = request_json(route)
     assert body["model"] == model
-    assert body["resolution"] == resolution
+    assert body.get("resolution") == resolution
     assert body.get("image_size") == size
     assert len(body["image_urls"]) == count
-    assert body["megapixel_ratio"] == 1.5
+    if model in {"flux2", "qwen"}:
+        assert body["megapixel_ratio"] == 1.0
+        assert "resolution" not in body
+    else:
+        assert "megapixel_ratio" not in body
 
 
 @respx.mock
@@ -2361,3 +2366,355 @@ def test_generic_estimate_cost_dry_run_and_unsupported_endpoint(monkeypatch):
     assert json.loads(result.stdout)["error"]["code"] == "validation_error"
     assert result.stderr == ""
     assert not route.called
+
+
+@pytest.mark.parametrize(
+    "operation,format_",
+    [
+        (operation, format_)
+        for operation in ("generate", "edit")
+        for format_ in ("png", "jpeg", "webp", "gif", "svg")
+        if (operation, format_) != ("edit", "svg")
+    ],
+)
+@respx.mock
+def test_gpt26_output_controls_and_downloads(
+    operation, format_, monkeypatch, make_temp_dir
+):
+    route = mock_async_post(f"/v1/image_{operation}")
+    status = respx.get("https://api.test/v1/status").mock(
+        side_effect=[
+            httpx.Response(200, json={"task_id": "abc", "status": "PROCESSING"}),
+            httpx.Response(
+                200,
+                json={
+                    "task_id": "abc",
+                    "status": "SUCCESS",
+                    "result": "https://cdn.test/result",
+                },
+            ),
+        ]
+    )
+    respx.get("https://cdn.test/result").respond(200, content=b"output")
+    directory = make_temp_dir(f"gpt26-{operation}-{format_}")
+    options = ["--output-format", format_, "--complexity", "low", "--quality", "max"]
+    if operation == "edit":
+        options += ["--image", str(FIXTURES / "sample.png")]
+    if format_ in {"jpeg", "webp"}:
+        options += ["--output-compression", "0"]
+    if format_ == "gif":
+        options += ["--frame-count", "2", "--frame-duration-ms", "20"]
+    invoke_json(
+        [
+            "--poll-interval",
+            "0.01",
+            "image",
+            operation,
+            "a lake",
+            "--model",
+            "gpt-image-2.6-sunburst",
+            *options,
+            "--download",
+            str(directory),
+        ],
+        monkeypatch,
+    )
+    body = request_json(route)
+    assert body["output_format"] == format_
+    assert body["complexity"] == "low"
+    assert body["quality"] == "max"
+    if operation == "edit":
+        assert body["image_urls"][0].startswith("data:image/png;base64,")
+    if format_ == "gif":
+        assert "image_size" not in body and "resolution" not in body
+        assert body["frame_count"] == 2 and body["frame_duration_ms"] == 20
+    if format_ in {"jpeg", "webp"}:
+        assert body["output_compression"] == 0
+    assert status.call_count == 2
+    assert len(list(directory.glob(f"*.{format_}"))) == 1
+    # Generic requests preserve forward-compatible fields and the same format controls.
+    respx.get("https://api.test/v1/openapi.json").respond(200, json=bundled_schema())
+    payload = {**body, "future_option": False}
+    items = [
+        part
+        for key, value in payload.items()
+        for part in ("--input", f"{key}={json.dumps(value)}")
+    ]
+    invoke_json(["run", f"/v1/image_{operation}", *items], monkeypatch)
+    assert json.loads(route.calls[-1].request.content) == payload
+
+
+@pytest.mark.parametrize(
+    "operation,fields",
+    [
+        ("generate", {"output_format": "gif", "resolution": "1k"}),
+        ("edit", {"output_format": "gif", "size": "square"}),
+        ("edit", {"output_format": "svg"}),
+        ("generate", {"output_format": "png", "output_compression": "50"}),
+        ("generate", {"frame_count": "2"}),
+        ("edit", {"output_format": "gif", "frame_count": "17"}),
+        ("generate", {"output_format": "gif", "frame_duration_ms": "19"}),
+        ("generate", {"model": "gpt-image-2.5-sunburst", "output_format": "png"}),
+        ("edit", {"model": "flux2", "complexity": "high"}),
+        ("generate", {"image": "https://img.test/source.png"}),
+        ("edit", {"megapixel_ratio": "1"}),
+    ],
+)
+@respx.mock
+def test_gpt26_invalid_options_fail_before_http(operation, fields):
+    model = fields.get("model", "gpt-image-2.6-sunburst")
+    options = [
+        part
+        for key, value in fields.items()
+        if key != "model"
+        for part in (f"--{key.replace('_', '-')}", value)
+    ]
+    if operation == "edit":
+        options += ["--image", "https://img.test/source.png"]
+    result = runner.invoke(
+        app, ["-j", "image", operation, "a lake", "--model", model, *options]
+    )
+    assert result.exit_code == 2, result.output
+    assert json.loads(result.stdout)["error"]["code"] == "validation_error"
+    assert result.stderr == ""
+    assert not respx.calls
+
+
+@pytest.mark.parametrize("speech", ["audio", "text"])
+@respx.mock
+def test_heygen_avatar_payload(speech, monkeypatch):
+    route = mock_async_post("/v1/image_lipsync")
+    options = (
+        ["--audio", str(FIXTURES / "result-2.mp3")]
+        if speech == "audio"
+        else ["--text", "Hello", "--voice-id", "voice-1"]
+    )
+    invoke_json(
+        [
+            "lipsync",
+            "image",
+            "--model",
+            "heygen-avatar-4",
+            "--image",
+            str(FIXTURES / "sample.png"),
+            "--expressiveness",
+            "high",
+            "--aspect-ratio",
+            "9:16",
+            *options,
+        ],
+        monkeypatch,
+    )
+    body = request_json(route)
+    assert body["image_url"].startswith("data:image/png;base64,")
+    assert body["resolution"] == "1080p"
+    assert body["expressiveness"] == "high" and body["aspect_ratio"] == "9:16"
+    assert "seed" not in body
+    if speech == "audio":
+        assert body["audio_url"].startswith("data:audio/")
+        assert "text" not in body and "voice_id" not in body
+    else:
+        assert body["text"] == "Hello" and body["voice_id"] == "voice-1"
+        assert "audio_url" not in body
+
+
+@pytest.mark.parametrize("model", ["heygen-speed", "heygen-precision"])
+@respx.mock
+def test_heygen_video_and_translation(model, monkeypatch):
+    lipsync = mock_async_post("/v1/video_lipsync")
+    invoke_json(
+        [
+            "lipsync",
+            "video",
+            "--model",
+            model,
+            "--video",
+            str(FIXTURES / "result-1.mp4"),
+            "--audio",
+            str(FIXTURES / "result-2.mp3"),
+        ],
+        monkeypatch,
+    )
+    assert request_json(lipsync)["model"] == model
+    assert request_json(lipsync)["video_url"].startswith("data:video/")
+    route = respx.post(
+        "https://api.test/v1/video_translate", params={"estimate_cost": "1"}
+    ).respond(200, json={"estimated_cost": 0.1, "currency": "USD"})
+    invoke_json(
+        [
+            "video",
+            "translate",
+            "--model",
+            model,
+            "--video",
+            str(FIXTURES / "result-1.mp4"),
+            "--output-language",
+            " Spanish ",
+            "--estimate-cost",
+            "--wait",
+        ],
+        monkeypatch,
+    )
+    assert request_json(route)["output_language"] == "Spanish"
+    assert request_json(route)["video_url"].startswith("data:video/")
+    assert request_json(route)["model"] == model
+
+
+@pytest.mark.parametrize(
+    "command,path,params",
+    [
+        (
+            [
+                "lipsync",
+                "heygen-voices",
+                "--language",
+                "English",
+                "--limit",
+                "2",
+                "--token",
+                "next",
+            ],
+            "heygen/voices",
+            {"language": "English", "limit": "2", "token": "next"},
+        ),
+        (["video", "translation-languages"], "video_translate/languages", {}),
+    ],
+)
+@respx.mock
+def test_heygen_catalogs(command, path, params, monkeypatch):
+    route = respx.get(f"https://api.test/v1/{path}", params=params).respond(
+        200, json={"data": ["entry"]}
+    )
+    assert invoke_json(command, monkeypatch) == {"data": ["entry"]}
+    assert route.call_count == 1
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        [
+            "lipsync",
+            "image",
+            "--model",
+            "heygen-avatar-4",
+            "--image",
+            "https://img.test/a.png",
+        ],
+        [
+            "lipsync",
+            "image",
+            "--model",
+            "heygen-avatar-4",
+            "--image",
+            "https://img.test/a.png",
+            "--text",
+            "Hello",
+        ],
+        [
+            "lipsync",
+            "image",
+            "--model",
+            "heygen-avatar-4",
+            "--image",
+            "https://img.test/a.png",
+            "--audio",
+            "https://cdn.test/a.mp3",
+            "--text",
+            "Hello",
+            "--voice-id",
+            "v",
+        ],
+        [
+            "lipsync",
+            "image",
+            "--image",
+            "https://img.test/a.png",
+            "--audio",
+            "https://cdn.test/a.mp3",
+            "--expressiveness",
+            "high",
+        ],
+        [
+            "lipsync",
+            "image",
+            "--model",
+            "heygen-avatar-4",
+            "--image",
+            "https://img.test/a.png",
+            "--audio",
+            "https://cdn.test/a.mp3",
+            "--seed",
+            "0",
+        ],
+        [
+            "video",
+            "translate",
+            "--video",
+            "https://cdn.test/a.mp4",
+            "--output-language",
+            " ",
+        ],
+        ["lipsync", "heygen-voices", "--limit", "101"],
+    ],
+)
+@respx.mock
+def test_heygen_invalid_options_fail_before_http(command):
+    result = runner.invoke(app, ["-j", *command])
+    assert result.exit_code == 2, result.output
+    assert json.loads(result.stdout)["error"]["code"] == "validation_error"
+    assert result.stderr == ""
+    assert not respx.calls
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        [
+            "image",
+            "edit",
+            "x",
+            "--image",
+            "https://img.test/a.png",
+            "--model",
+            "qwen",
+            "--resolution",
+            "1k",
+        ],
+        [
+            "image",
+            "edit",
+            "x",
+            "--image",
+            "https://img.test/a.png",
+            "--model",
+            "gpt-image-2",
+            "--megapixel-ratio",
+            "1",
+        ],
+        [
+            "image",
+            "generate",
+            "x",
+            "--model",
+            "grok",
+            "--image",
+            "https://img.test/a.png",
+        ],
+        [
+            "image",
+            "generate",
+            "x",
+            "--model",
+            "gemini-3-pro",
+            "--lora-url",
+            "https://cdn.test/a.safetensors",
+        ],
+    ],
+)
+@respx.mock
+def test_image_provider_options_fail_before_http(command):
+    result = runner.invoke(app, ["-j", *command])
+    assert result.exit_code == 2, result.output
+    assert json.loads(result.stdout)["error"]["code"] == "validation_error"
+    assert result.stderr == ""
+    assert not respx.calls

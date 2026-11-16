@@ -20,6 +20,20 @@ _VIDEO_GENERATE_ADAPTER: TypeAdapter[VideoGenerateRequest] = TypeAdapter(
 _VIDEO_EDIT_ADAPTER: TypeAdapter[VideoEditRequest] = TypeAdapter(VideoEditRequest)
 
 
+_IMAGE_GENERATE_ADAPTER: TypeAdapter[ImageGeneratePayload] = TypeAdapter(
+    ImageGeneratePayload
+)
+_IMAGE_EDIT_ADAPTER: TypeAdapter[ImageEditPayload] = TypeAdapter(ImageEditPayload)
+
+
+def validate_image_generate(**values):
+    return _IMAGE_GENERATE_ADAPTER.validate_python(values)
+
+
+def validate_image_edit(**values):
+    return _IMAGE_EDIT_ADAPTER.validate_python(values)
+
+
 def validate_video_generate(**values):
     return _VIDEO_GENERATE_ADAPTER.validate_python(values)
 
@@ -67,30 +81,30 @@ def test_chat_rejects_invalid_roles_and_options(fields):
     [("zimage", "portrait"), ("flux2", "transparent")],
 )
 def test_image_generate_keeps_styles_for_supported_models(model, style):
-    assert ImageGeneratePayload(prompt="x", model=model, style=style).style == style
+    assert validate_image_generate(prompt="x", model=model, style=style).style == style
 
 
 def test_removed_flux_model_is_rejected_and_flux2_remains_valid():
     with pytest.raises(ValidationError):
-        ImageGeneratePayload(prompt="x", model="flux")
+        validate_image_generate(prompt="x", model="flux")
 
-    assert ImageGeneratePayload(prompt="x", model="flux2").model == "flux2"
+    assert validate_image_generate(prompt="x", model="flux2").model == "flux2"
 
 
 def test_qwen_accepts_max_three_images():
     with pytest.raises(ValidationError):
-        ImageEditPayload(prompt="x", model="qwen", image_urls=["1", "2", "3", "4"])
+        validate_image_edit(prompt="x", model="qwen", image_urls=["1", "2", "3", "4"])
 
 
 def test_new_image_models_apply_provider_constraints():
-    assert ImageGeneratePayload(prompt="x", model="seedream-5").resolution == "2k"
-    assert ImageGeneratePayload(prompt="x", model="wan2.7").resolution == "2k"
+    assert validate_image_generate(prompt="x", model="seedream-5").resolution == "2k"
+    assert validate_image_generate(prompt="x", model="wan2.7").resolution == "2k"
     assert (
-        ImageGeneratePayload(prompt="x", model="wan2.7-pro", resolution="4k").model
+        validate_image_generate(prompt="x", model="wan2.7-pro", resolution="4k").model
         == "wan2.7-pro"
     )
     assert (
-        ImageEditPayload(
+        validate_image_edit(
             prompt="x",
             model="wan2.7-pro",
             image_urls=["https://img.test/source.png"],
@@ -98,7 +112,7 @@ def test_new_image_models_apply_provider_constraints():
         == "2k"
     )
     assert (
-        ImageEditPayload(
+        validate_image_edit(
             prompt="x",
             model="gpt-image-2",
             resolution="3k",
@@ -108,15 +122,15 @@ def test_new_image_models_apply_provider_constraints():
     )
 
     with pytest.raises(ValidationError):
-        ImageGeneratePayload(prompt="x", model="gemini-3-pro", resolution="3k")
+        validate_image_generate(prompt="x", model="gemini-3-pro", resolution="3k")
     with pytest.raises(ValidationError):
-        ImageEditPayload(
+        validate_image_edit(
             prompt="x",
             model="seedream-5",
             image_urls=[str(index) for index in range(15)],
         )
     with pytest.raises(ValidationError):
-        ImageEditPayload(
+        validate_image_edit(
             prompt="x",
             model="wan2.7",
             image_urls=[str(index) for index in range(10)],

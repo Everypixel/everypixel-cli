@@ -818,6 +818,274 @@
         "title": "FacesResponse",
         "type": "object"
       },
+      "Flux2ImageEditRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImageSizeEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Image Urls",
+            "type": "array"
+          },
+          "megapixel_ratio": {
+            "default": 1.0,
+            "maximum": 1.5,
+            "minimum": 0.5,
+            "title": "Megapixel Ratio",
+            "type": "number"
+          },
+          "model": {
+            "const": "flux2",
+            "default": "flux2",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt",
+          "image_urls"
+        ],
+        "title": "Flux2ImageEditRequest",
+        "type": "object"
+      },
+      "Flux2ImageGenerateRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "$ref": "#/components/schemas/ImageSizeEnum",
+            "default": "square"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "lora_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lora Url"
+          },
+          "model": {
+            "const": "flux2",
+            "default": "flux2",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/ImageGenerateResolutionEnum",
+            "default": "1k"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "const": "transparent",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "Flux2ImageGenerateRequest",
+        "type": "object"
+      },
+      "Flux3ImageEditRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImageSizeEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Image Urls",
+            "type": "array"
+          },
+          "model": {
+            "const": "flux3",
+            "default": "flux3",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "default": "1k",
+            "enum": [
+              "1k",
+              "2k",
+              "4k"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt",
+          "image_urls"
+        ],
+        "title": "Flux3ImageEditRequest",
+        "type": "object"
+      },
+      "Flux3ImageGenerateRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "$ref": "#/components/schemas/ImageSizeEnum",
+            "default": "square"
+          },
+          "model": {
+            "const": "flux3",
+            "default": "flux3",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "default": "1k",
+            "enum": [
+              "1k",
+              "2k",
+              "4k"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "Flux3ImageGenerateRequest",
+        "type": "object"
+      },
       "Flux3VideoAspectRatioEnum": {
         "enum": [
           "21:9",
@@ -1092,6 +1360,759 @@
         "title": "FunctionCall",
         "type": "object"
       },
+      "GPTImage25EditRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "$ref": "#/components/schemas/ImageSizeEnum",
+            "default": "square"
+          },
+          "image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Image Urls",
+            "type": "array"
+          },
+          "model": {
+            "const": "gpt-image-2.5-sunburst",
+            "default": "gpt-image-2.5-sunburst",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/ImageQualityEnum",
+            "default": "medium"
+          },
+          "resolution": {
+            "default": "1k",
+            "enum": [
+              "1k",
+              "2k",
+              "3k"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt",
+          "image_urls"
+        ],
+        "title": "GPTImage25EditRequest",
+        "type": "object"
+      },
+      "GPTImage25GenerateRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "$ref": "#/components/schemas/ImageSizeEnum",
+            "default": "square"
+          },
+          "model": {
+            "const": "gpt-image-2.5-sunburst",
+            "default": "gpt-image-2.5-sunburst",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/ImageQualityEnum",
+            "default": "medium"
+          },
+          "resolution": {
+            "default": "1k",
+            "enum": [
+              "1k",
+              "2k",
+              "3k"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "GPTImage25GenerateRequest",
+        "type": "object"
+      },
+      "GPTImage26EditRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "complexity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Planning complexity; provider default is high.",
+            "title": "Complexity"
+          },
+          "frame_count": {
+            "anyOf": [
+              {
+                "maximum": 16.0,
+                "minimum": 2.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frame Count"
+          },
+          "frame_duration_ms": {
+            "anyOf": [
+              {
+                "maximum": 2000.0,
+                "minimum": 20.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frame Duration Ms"
+          },
+          "image_size": {
+            "$ref": "#/components/schemas/ImageSizeEnum",
+            "default": "square"
+          },
+          "image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Image Urls",
+            "type": "array"
+          },
+          "model": {
+            "const": "gpt-image-2.6-sunburst",
+            "default": "gpt-image-2.6-sunburst",
+            "title": "Model",
+            "type": "string"
+          },
+          "output_compression": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Compression"
+          },
+          "output_format": {
+            "default": "png",
+            "enum": [
+              "png",
+              "jpeg",
+              "webp",
+              "gif"
+            ],
+            "title": "Output Format",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/ImageQualityEnum",
+            "default": "medium"
+          },
+          "resolution": {
+            "default": "1k",
+            "enum": [
+              "1k",
+              "2k",
+              "3k"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt",
+          "image_urls"
+        ],
+        "title": "GPTImage26EditRequest",
+        "type": "object"
+      },
+      "GPTImage26GenerateRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "complexity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Planning complexity; provider default is high.",
+            "title": "Complexity"
+          },
+          "frame_count": {
+            "anyOf": [
+              {
+                "maximum": 16.0,
+                "minimum": 2.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frame Count"
+          },
+          "frame_duration_ms": {
+            "anyOf": [
+              {
+                "maximum": 2000.0,
+                "minimum": 20.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frame Duration Ms"
+          },
+          "image_size": {
+            "$ref": "#/components/schemas/ImageSizeEnum",
+            "default": "square"
+          },
+          "model": {
+            "const": "gpt-image-2.6-sunburst",
+            "default": "gpt-image-2.6-sunburst",
+            "title": "Model",
+            "type": "string"
+          },
+          "output_compression": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Compression"
+          },
+          "output_format": {
+            "default": "png",
+            "enum": [
+              "png",
+              "jpeg",
+              "webp",
+              "gif",
+              "svg"
+            ],
+            "title": "Output Format",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/ImageQualityEnum",
+            "default": "medium"
+          },
+          "resolution": {
+            "default": "1k",
+            "enum": [
+              "1k",
+              "2k",
+              "3k"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "GPTImage26GenerateRequest",
+        "type": "object"
+      },
+      "GPTImage2EditRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "$ref": "#/components/schemas/ImageSizeEnum",
+            "default": "square"
+          },
+          "image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Image Urls",
+            "type": "array"
+          },
+          "model": {
+            "const": "gpt-image-2",
+            "default": "gpt-image-2",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "quality": {
+            "default": "medium",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Quality",
+            "type": "string"
+          },
+          "resolution": {
+            "default": "1k",
+            "enum": [
+              "1k",
+              "2k",
+              "3k"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt",
+          "image_urls"
+        ],
+        "title": "GPTImage2EditRequest",
+        "type": "object"
+      },
+      "GPTImage2GenerateRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "$ref": "#/components/schemas/ImageSizeEnum",
+            "default": "square"
+          },
+          "model": {
+            "const": "gpt-image-2",
+            "default": "gpt-image-2",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "quality": {
+            "default": "medium",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Quality",
+            "type": "string"
+          },
+          "resolution": {
+            "default": "1k",
+            "enum": [
+              "1k",
+              "2k",
+              "3k"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "GPTImage2GenerateRequest",
+        "type": "object"
+      },
+      "GeminiFlashLiteImageEditRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImageSizeEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 14,
+            "minItems": 1,
+            "title": "Image Urls",
+            "type": "array"
+          },
+          "model": {
+            "const": "gemini-3.1-flash-lite",
+            "default": "gemini-3.1-flash-lite",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "const": "1k",
+            "default": "1k",
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt",
+          "image_urls"
+        ],
+        "title": "GeminiFlashLiteImageEditRequest",
+        "type": "object"
+      },
+      "GeminiFlashLiteImageGenerateRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "$ref": "#/components/schemas/ImageSizeEnum",
+            "default": "square"
+          },
+          "model": {
+            "const": "gemini-3.1-flash-lite",
+            "default": "gemini-3.1-flash-lite",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "const": "1k",
+            "default": "1k",
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "GeminiFlashLiteImageGenerateRequest",
+        "type": "object"
+      },
+      "GeminiImageEditRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImageSizeEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 14,
+            "minItems": 1,
+            "title": "Image Urls",
+            "type": "array"
+          },
+          "model": {
+            "default": "gemini-3.1-flash",
+            "enum": [
+              "gemini-3.1-flash",
+              "gemini-nano-banana-2.1",
+              "gemini-3-pro"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "default": "1k",
+            "enum": [
+              "1k",
+              "2k",
+              "4k"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt",
+          "image_urls"
+        ],
+        "title": "GeminiImageEditRequest",
+        "type": "object"
+      },
+      "GeminiImageGenerateRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "$ref": "#/components/schemas/ImageSizeEnum",
+            "default": "square"
+          },
+          "model": {
+            "default": "gemini-3.1-flash",
+            "enum": [
+              "gemini-3.1-flash",
+              "gemini-nano-banana-2.1",
+              "gemini-3-pro"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "default": "1k",
+            "enum": [
+              "1k",
+              "2k",
+              "4k"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "GeminiImageGenerateRequest",
+        "type": "object"
+      },
       "Grok15VideoGenRequest": {
         "properties": {
           "aspect_ratio": {
@@ -1160,6 +2181,132 @@
         ],
         "title": "Grok15VideoResolutionEnum",
         "type": "string"
+      },
+      "GrokImageEditRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImageSizeEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Image Urls",
+            "type": "array"
+          },
+          "model": {
+            "default": "grok-imagine",
+            "enum": [
+              "grok-imagine",
+              "grok-imagine-2",
+              "grok-imagine-2-low"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "default": "1k",
+            "enum": [
+              "1k",
+              "2k"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt",
+          "image_urls"
+        ],
+        "title": "GrokImageEditRequest",
+        "type": "object"
+      },
+      "GrokImageGenerateRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "$ref": "#/components/schemas/ImageSizeEnum",
+            "default": "square"
+          },
+          "model": {
+            "default": "grok-imagine",
+            "enum": [
+              "grok-imagine",
+              "grok-imagine-2",
+              "grok-imagine-2-low"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "default": "1k",
+            "enum": [
+              "1k",
+              "2k"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "GrokImageGenerateRequest",
+        "type": "object"
       },
       "GrokVideoGenRequest": {
         "properties": {
@@ -1264,6 +2411,119 @@
           "status"
         ],
         "title": "HealthReport",
+        "type": "object"
+      },
+      "HeyGenImageLipsyncRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "aspect_ratio": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "16:9",
+              "9:16",
+              "4:5",
+              "5:4",
+              "1:1"
+            ],
+            "title": "Aspect Ratio",
+            "type": "string"
+          },
+          "audio_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio Url"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "expressiveness": {
+            "default": "low",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Expressiveness",
+            "type": "string"
+          },
+          "image_url": {
+            "title": "Image Url",
+            "type": "string"
+          },
+          "model": {
+            "const": "heygen-avatar-4",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt"
+          },
+          "resolution": {
+            "default": "1080p",
+            "enum": [
+              "720p",
+              "1080p"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "maxLength": 10000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "voice_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Id"
+          }
+        },
+        "required": [
+          "model",
+          "image_url"
+        ],
+        "title": "HeyGenImageLipsyncRequest",
         "type": "object"
       },
       "ImageEditAnglesRequest": {
@@ -1377,133 +2637,6 @@
         ],
         "title": "ImageEditColorsRequest",
         "type": "object"
-      },
-      "ImageEditModelEnum": {
-        "enum": [
-          "flux3",
-          "gpt-image-2",
-          "gpt-image-2.5-sunburst",
-          "flux2",
-          "qwen",
-          "wan2.7",
-          "wan2.7-pro",
-          "grok-imagine",
-          "grok-imagine-2",
-          "grok-imagine-2-low",
-          "gemini-3.1-flash",
-          "gemini-nano-banana-2.1",
-          "gemini-3.1-flash-lite",
-          "gemini-3-pro",
-          "seedream-5-pro",
-          "seedream-5-flash",
-          "seedream-5"
-        ],
-        "title": "ImageEditModelEnum",
-        "type": "string"
-      },
-      "ImageEditRequest": {
-        "properties": {
-          "callback_url": {
-            "anyOf": [
-              {
-                "format": "uri",
-                "maxLength": 2083,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Callback Url"
-          },
-          "image_size": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ImageSizeEnum"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "image_urls": {
-            "items": {
-              "type": "string"
-            },
-            "minItems": 1,
-            "title": "Image Urls",
-            "type": "array"
-          },
-          "megapixel_ratio": {
-            "default": 1.0,
-            "description": "Multiplier for the target megapixel count of the image_edit result",
-            "maximum": 1.5,
-            "minimum": 0.5,
-            "title": "Megapixel Ratio",
-            "type": "number"
-          },
-          "model": {
-            "$ref": "#/components/schemas/ImageEditModelEnum",
-            "default": "flux2"
-          },
-          "prompt": {
-            "title": "Prompt",
-            "type": "string"
-          },
-          "quality": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ImageQualityEnum"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "GPT Image quality; defaults to medium. Unsupported for other models."
-          },
-          "resolution": {
-            "$ref": "#/components/schemas/ImageGenerateResolutionEnum",
-            "default": "1k",
-            "description": "Output size tier. GPT Image 3k supports only square image_size."
-          },
-          "seed": {
-            "default": -1,
-            "title": "Seed",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "prompt",
-          "image_urls"
-        ],
-        "title": "ImageEditRequest",
-        "type": "object"
-      },
-      "ImageGenerateModelEnum": {
-        "enum": [
-          "flux3",
-          "gpt-image-2",
-          "gpt-image-2.5-sunburst",
-          "zimage",
-          "wan2.7",
-          "wan2.7-pro",
-          "flux2",
-          "grok-imagine",
-          "grok-imagine-2",
-          "grok-imagine-2-low",
-          "gemini-3.1-flash",
-          "gemini-nano-banana-2.1",
-          "gemini-3.1-flash-lite",
-          "gemini-3-pro",
-          "seedream-5-pro",
-          "seedream-5-flash",
-          "seedream-5",
-          "recraftv4_1_vector",
-          "recraftv4_1_pro_vector"
-        ],
-        "title": "ImageGenerateModelEnum",
-        "type": "string"
       },
       "ImageGenerateResolutionEnum": {
         "enum": [
@@ -1622,14 +2755,6 @@
         "title": "ImageSizeEnum",
         "type": "string"
       },
-      "ImageStyleEnum": {
-        "enum": [
-          "portrait",
-          "transparent"
-        ],
-        "title": "ImageStyleEnum",
-        "type": "string"
-      },
       "ImageSwapStatusResponse": {
         "properties": {
           "error": {
@@ -1737,107 +2862,6 @@
           "image_url"
         ],
         "title": "ImageVectorizeRequest",
-        "type": "object"
-      },
-      "ImgenRequest": {
-        "properties": {
-          "callback_url": {
-            "anyOf": [
-              {
-                "format": "uri",
-                "maxLength": 2083,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Callback Url"
-          },
-          "controls": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/RecraftControls"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "image_size": {
-            "$ref": "#/components/schemas/ImageSizeEnum",
-            "default": "square"
-          },
-          "image_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Image Url"
-          },
-          "lora_url": {
-            "anyOf": [
-              {
-                "format": "uri",
-                "maxLength": 2083,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lora Url"
-          },
-          "model": {
-            "$ref": "#/components/schemas/ImageGenerateModelEnum",
-            "default": "zimage"
-          },
-          "prompt": {
-            "title": "Prompt",
-            "type": "string"
-          },
-          "quality": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ImageQualityEnum"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "GPT Image quality; defaults to medium. Unsupported for other models."
-          },
-          "resolution": {
-            "$ref": "#/components/schemas/ImageGenerateResolutionEnum",
-            "default": "1k",
-            "description": "Output size tier. GPT Image 3k supports only square image_size."
-          },
-          "seed": {
-            "default": -1,
-            "title": "Seed",
-            "type": "integer"
-          },
-          "style": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ImageStyleEnum"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "prompt"
-        ],
-        "title": "ImgenRequest",
         "type": "object"
       },
       "ImgenStatusResponse": {
@@ -2538,6 +3562,16 @@
             ],
             "title": "Callback Url"
           },
+          "model": {
+            "default": "inftalk",
+            "enum": [
+              "inftalk",
+              "heygen-speed",
+              "heygen-precision"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
           "prompt": {
             "anyOf": [
               {
@@ -2986,6 +4020,71 @@
         "title": "QualityUGCResponse",
         "type": "object"
       },
+      "QwenImageEditRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImageSizeEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Image Urls",
+            "type": "array"
+          },
+          "megapixel_ratio": {
+            "default": 1.0,
+            "maximum": 1.5,
+            "minimum": 0.5,
+            "title": "Megapixel Ratio",
+            "type": "number"
+          },
+          "model": {
+            "const": "qwen",
+            "default": "qwen",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt",
+          "image_urls"
+        ],
+        "title": "QwenImageEditRequest",
+        "type": "object"
+      },
       "QwenTTSDesignRequest": {
         "properties": {
           "callback_url": {
@@ -3112,6 +4211,65 @@
           }
         },
         "title": "RecraftControls",
+        "type": "object"
+      },
+      "RecraftImageGenerateRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "controls": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecraftControls"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "image_size": {
+            "$ref": "#/components/schemas/ImageSizeEnum",
+            "default": "square"
+          },
+          "model": {
+            "default": "recraftv4_1_vector",
+            "enum": [
+              "recraftv4_1_vector",
+              "recraftv4_1_pro_vector"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "maximum": 4294967295.0,
+            "minimum": -1.0,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "RecraftImageGenerateRequest",
         "type": "object"
       },
       "ResponseFormat": {
@@ -3364,7 +4522,7 @@
           },
           "seed": {
             "default": -1,
-            "maximum": 4294967295.0,
+            "maximum": 2147483647.0,
             "minimum": -1.0,
             "title": "Seed",
             "type": "integer"
@@ -3476,7 +4634,7 @@
           },
           "seed": {
             "default": -1,
-            "maximum": 4294967295.0,
+            "maximum": 2147483647.0,
             "minimum": -1.0,
             "title": "Seed",
             "type": "integer"
@@ -3494,6 +4652,250 @@
         ],
         "title": "Seedance2VideoResolutionEnum",
         "type": "string"
+      },
+      "Seedream5ImageEditRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImageSizeEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 14,
+            "minItems": 1,
+            "title": "Image Urls",
+            "type": "array"
+          },
+          "model": {
+            "const": "seedream-5",
+            "default": "seedream-5",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "default": "2k",
+            "enum": [
+              "2k",
+              "3k",
+              "4k"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt",
+          "image_urls"
+        ],
+        "title": "Seedream5ImageEditRequest",
+        "type": "object"
+      },
+      "Seedream5ImageGenerateRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "$ref": "#/components/schemas/ImageSizeEnum",
+            "default": "square"
+          },
+          "model": {
+            "const": "seedream-5",
+            "default": "seedream-5",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "default": "2k",
+            "enum": [
+              "2k",
+              "3k",
+              "4k"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "Seedream5ImageGenerateRequest",
+        "type": "object"
+      },
+      "SeedreamImageEditRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImageSizeEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Image Urls",
+            "type": "array"
+          },
+          "model": {
+            "default": "seedream-5-pro",
+            "enum": [
+              "seedream-5-pro",
+              "seedream-5-flash"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "default": "2k",
+            "enum": [
+              "1k",
+              "2k"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt",
+          "image_urls"
+        ],
+        "title": "SeedreamImageEditRequest",
+        "type": "object"
+      },
+      "SeedreamImageGenerateRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "$ref": "#/components/schemas/ImageSizeEnum",
+            "default": "square"
+          },
+          "model": {
+            "default": "seedream-5-pro",
+            "enum": [
+              "seedream-5-pro",
+              "seedream-5-flash"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "default": "2k",
+            "enum": [
+              "1k",
+              "2k"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "SeedreamImageGenerateRequest",
+        "type": "object"
       },
       "StatusResponse": {
         "properties": {
@@ -4178,6 +5580,50 @@
         "title": "VideoSwapStatusResponse",
         "type": "object"
       },
+      "VideoTranslateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "model": {
+            "default": "heygen-speed",
+            "enum": [
+              "heygen-speed",
+              "heygen-precision"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
+          "output_language": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Output Language",
+            "type": "string"
+          },
+          "video_url": {
+            "title": "Video Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "video_url",
+          "output_language"
+        ],
+        "title": "VideoTranslateRequest",
+        "type": "object"
+      },
       "VideoUpscaleModelEnum": {
         "enum": [
           "seedvr2",
@@ -4248,6 +5694,191 @@
         ],
         "title": "VideoUpscaleResolutionEnum",
         "type": "string"
+      },
+      "Wan27ImageEditRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImageSizeEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 9,
+            "minItems": 1,
+            "title": "Image Urls",
+            "type": "array"
+          },
+          "model": {
+            "default": "wan2.7",
+            "enum": [
+              "wan2.7",
+              "wan2.7-pro"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "default": "2k",
+            "enum": [
+              "1k",
+              "2k"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "maximum": 2147483647.0,
+            "minimum": -1.0,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt",
+          "image_urls"
+        ],
+        "title": "Wan27ImageEditRequest",
+        "type": "object"
+      },
+      "Wan27ImageGenerateRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "$ref": "#/components/schemas/ImageSizeEnum",
+            "default": "square"
+          },
+          "model": {
+            "const": "wan2.7",
+            "default": "wan2.7",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "default": "2k",
+            "enum": [
+              "1k",
+              "2k"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "maximum": 2147483647.0,
+            "minimum": -1.0,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "Wan27ImageGenerateRequest",
+        "type": "object"
+      },
+      "Wan27ProImageGenerateRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "$ref": "#/components/schemas/ImageSizeEnum",
+            "default": "square"
+          },
+          "model": {
+            "const": "wan2.7-pro",
+            "default": "wan2.7-pro",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "default": "2k",
+            "enum": [
+              "1k",
+              "2k",
+              "4k"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "maximum": 2147483647.0,
+            "minimum": -1.0,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "Wan27ProImageGenerateRequest",
+        "type": "object"
       },
       "Wan27VideoAspectRatioEnum": {
         "enum": [
@@ -4574,6 +6205,83 @@
         ],
         "title": "Wan30VideoResolutionEnum",
         "type": "string"
+      },
+      "ZImageGenerateRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "$ref": "#/components/schemas/ImageSizeEnum",
+            "default": "square"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "lora_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lora Url"
+          },
+          "model": {
+            "const": "zimage",
+            "default": "zimage",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/ImageGenerateResolutionEnum",
+            "default": "1k"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "style": {
+            "const": "portrait",
+            "default": "portrait",
+            "title": "Style",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "ZImageGenerateRequest",
+        "type": "object"
       }
     }
   },
@@ -4841,6 +6549,81 @@
         ]
       }
     },
+    "/v1/heygen/voices": {
+      "get": {
+        "operationId": "heygen_voices_v1_heygen_voices_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "language",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Language"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Heygen Voices",
+        "tags": [
+          "lipsync"
+        ]
+      }
+    },
     "/v1/image_captioning": {
       "get": {
         "operationId": "captioning_get_v1_image_captioning_get",
@@ -4992,7 +6775,68 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ImageEditRequest"
+                "discriminator": {
+                  "mapping": {
+                    "flux2": "#/components/schemas/Flux2ImageEditRequest",
+                    "flux3": "#/components/schemas/Flux3ImageEditRequest",
+                    "gemini-3-pro": "#/components/schemas/GeminiImageEditRequest",
+                    "gemini-3.1-flash": "#/components/schemas/GeminiImageEditRequest",
+                    "gemini-3.1-flash-lite": "#/components/schemas/GeminiFlashLiteImageEditRequest",
+                    "gemini-nano-banana-2.1": "#/components/schemas/GeminiImageEditRequest",
+                    "gpt-image-2": "#/components/schemas/GPTImage2EditRequest",
+                    "gpt-image-2.5-sunburst": "#/components/schemas/GPTImage25EditRequest",
+                    "gpt-image-2.6-sunburst": "#/components/schemas/GPTImage26EditRequest",
+                    "grok-imagine": "#/components/schemas/GrokImageEditRequest",
+                    "grok-imagine-2": "#/components/schemas/GrokImageEditRequest",
+                    "grok-imagine-2-low": "#/components/schemas/GrokImageEditRequest",
+                    "qwen": "#/components/schemas/QwenImageEditRequest",
+                    "seedream-5": "#/components/schemas/Seedream5ImageEditRequest",
+                    "seedream-5-flash": "#/components/schemas/SeedreamImageEditRequest",
+                    "seedream-5-pro": "#/components/schemas/SeedreamImageEditRequest",
+                    "wan2.7": "#/components/schemas/Wan27ImageEditRequest",
+                    "wan2.7-pro": "#/components/schemas/Wan27ImageEditRequest"
+                  },
+                  "propertyName": "model"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Flux2ImageEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/QwenImageEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Flux3ImageEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GrokImageEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GeminiImageEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GeminiFlashLiteImageEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SeedreamImageEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Seedream5ImageEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Wan27ImageEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GPTImage2EditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GPTImage25EditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GPTImage26EditRequest"
+                  }
+                ],
+                "title": "Data"
               }
             }
           },
@@ -5181,7 +7025,76 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ImgenRequest"
+                "discriminator": {
+                  "mapping": {
+                    "flux2": "#/components/schemas/Flux2ImageGenerateRequest",
+                    "flux3": "#/components/schemas/Flux3ImageGenerateRequest",
+                    "gemini-3-pro": "#/components/schemas/GeminiImageGenerateRequest",
+                    "gemini-3.1-flash": "#/components/schemas/GeminiImageGenerateRequest",
+                    "gemini-3.1-flash-lite": "#/components/schemas/GeminiFlashLiteImageGenerateRequest",
+                    "gemini-nano-banana-2.1": "#/components/schemas/GeminiImageGenerateRequest",
+                    "gpt-image-2": "#/components/schemas/GPTImage2GenerateRequest",
+                    "gpt-image-2.5-sunburst": "#/components/schemas/GPTImage25GenerateRequest",
+                    "gpt-image-2.6-sunburst": "#/components/schemas/GPTImage26GenerateRequest",
+                    "grok-imagine": "#/components/schemas/GrokImageGenerateRequest",
+                    "grok-imagine-2": "#/components/schemas/GrokImageGenerateRequest",
+                    "grok-imagine-2-low": "#/components/schemas/GrokImageGenerateRequest",
+                    "recraftv4_1_pro_vector": "#/components/schemas/RecraftImageGenerateRequest",
+                    "recraftv4_1_vector": "#/components/schemas/RecraftImageGenerateRequest",
+                    "seedream-5": "#/components/schemas/Seedream5ImageGenerateRequest",
+                    "seedream-5-flash": "#/components/schemas/SeedreamImageGenerateRequest",
+                    "seedream-5-pro": "#/components/schemas/SeedreamImageGenerateRequest",
+                    "wan2.7": "#/components/schemas/Wan27ImageGenerateRequest",
+                    "wan2.7-pro": "#/components/schemas/Wan27ProImageGenerateRequest",
+                    "zimage": "#/components/schemas/ZImageGenerateRequest"
+                  },
+                  "propertyName": "model"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/ZImageGenerateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Flux2ImageGenerateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Flux3ImageGenerateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GrokImageGenerateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GeminiImageGenerateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GeminiFlashLiteImageGenerateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SeedreamImageGenerateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Seedream5ImageGenerateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Wan27ImageGenerateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Wan27ProImageGenerateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RecraftImageGenerateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GPTImage2GenerateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GPTImage25GenerateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GPTImage26GenerateRequest"
+                  }
+                ],
+                "title": "Data"
               }
             }
           },
@@ -5244,7 +7157,15 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ImageLipsyncRequest"
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ImageLipsyncRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/HeyGenImageLipsyncRequest"
+                  }
+                ],
+                "title": "Data"
               }
             }
           },
@@ -7349,6 +9270,88 @@
         "summary": "Video Soundtrack",
         "tags": [
           "imgen"
+        ]
+      }
+    },
+    "/v1/video_translate": {
+      "post": {
+        "operationId": "video_translate_v1_video_translate_post",
+        "parameters": [
+          {
+            "description": "Estimate USD cost without creating a task or consuming quota.",
+            "in": "query",
+            "name": "estimate_cost",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Estimate USD cost without creating a task or consuming quota.",
+              "title": "Estimate Cost",
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoTranslateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ImgenStatusResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CostEstimateResponse"
+                    }
+                  ],
+                  "title": "Response Video Translate V1 Video Translate Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Video Translate",
+        "tags": [
+          "video"
+        ]
+      }
+    },
+    "/v1/video_translate/languages": {
+      "get": {
+        "operationId": "translation_languages_v1_video_translate_languages_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Translation Languages",
+        "tags": [
+          "video"
         ]
       }
     },

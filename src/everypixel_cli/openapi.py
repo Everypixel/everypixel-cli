@@ -240,6 +240,23 @@ def validate_payload_against_operation(
     schema = json_request_body_schema(operation.schema)
     if schema is None:
         return
+    # Provider schemas have model defaults, so a bare oneOf can match several
+    # branches when model is omitted. Follow the API's discriminator dispatch.
+    discriminator = schema.get("discriminator", {})
+    model = payload.get("model")
+    if model is None and operation.path == "/v1/image_generate":
+        style = payload.get("style")
+        model = (
+            {"portrait": "zimage", "transparent": "flux2"}.get(style, "zimage")
+            if isinstance(style, str)
+            else "zimage"
+        )
+    elif model is None and operation.path == "/v1/image_edit":
+        model = "flux2"
+    if discriminator.get("propertyName") == "model" and isinstance(model, str):
+        reference = discriminator.get("mapping", {}).get(model)
+        if reference:
+            schema = {"$ref": reference}
     validator = openapi_validator(schema, operation.document)
     error = best_match(validator.iter_errors(payload))
     if error is None:

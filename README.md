@@ -164,15 +164,30 @@ Recraft V4.1 vector models (`recraftv4_1_vector`, `recraftv4_1_pro_vector`)
 produce SVG files and accept optional JSON palette `--controls`. Use `--size`
 to select their aspect ratio. Raster models also accept `--resolution`.
 
-`--lora-url` is supported only by `zimage`.
+`--lora-url` applies only to `zimage`. Source-image generation with `--image`
+uses `zimage` or `flux2 --style transparent`; use `image edit` for other modes.
+`--megapixel-ratio` applies only to `flux2` and `qwen` editing; these editing
+models do not accept `--resolution`.
 
-GPT Image models are `gpt-image-2` and `gpt-image-2.5-sunburst`. Both generation
-and editing accept `--quality low|medium|high` (default: `medium`); Sunburst also
-supports `xhigh` and `max`. Use `--size square` with `--resolution 3k`.
+GPT Image models are `gpt-image-2`, `gpt-image-2.5-sunburst`, and
+`gpt-image-2.6-sunburst`. Generation and editing accept
+`--quality low|medium|high` (default: `medium`); both Sunburst models also accept
+`xhigh` and `max`. Use `--size square` with `--resolution 3k`.
+
+GPT Image 2.6 accepts `--complexity low|medium|high` and
+`--output-format png|jpeg|webp|gif`; generation also accepts `svg`.
+`--output-compression 0..100` applies only to JPEG/WebP. GIF accepts
+`--frame-count 2..16` and `--frame-duration-ms 20..2000`; omit `--size` and
+`--resolution` because GIF sizing is automatic. These controls apply only to
+GPT Image 2.6.
 
 ```bash
 everypixel image generate "a detailed botanical illustration" \
-  --model gpt-image-2.5-sunburst --quality high --download ./outputs
+  --model gpt-image-2.6-sunburst --quality high --download ./outputs
+
+everypixel image generate "a looping animation of a waving cat" \
+  --model gpt-image-2.6-sunburst --output-format gif --frame-count 9 \
+  --frame-duration-ms 200 --download ./outputs
 ```
 
 Other image models include `flux3`, `gemini-nano-banana-2.1` (Nano Banana 2.1),
@@ -279,6 +294,28 @@ everypixel audio transcribe --audio ./speech.mp3 --language English \
 everypixel audio tts-create --model qwen3 --text "Hello world" \
   --speaker Ryan --style Warm --language English --download ./outputs
 ```
+
+HeyGen video lipsync accepts `--model heygen-speed|heygen-precision` with
+`--video` and `--audio`. Audio and video durations must differ by at most 15%.
+HeyGen Avatar 4 uses `lipsync image --model heygen-avatar-4` with either
+`--audio` or `--text` plus `--voice-id`. Avatar-only options are
+`--aspect-ratio`, `--expressiveness low|medium|high`, and `--resolution 720p|1080p`
+(default: `1080p`); `--prompt` directs motion. Avatar 4 does not accept `--seed`.
+
+```bash
+everypixel lipsync heygen-voices --language English --limit 20
+
+everypixel lipsync image --model heygen-avatar-4 --image ./portrait.png \
+  --text "Hello!" --voice-id VOICE_ID --download ./outputs
+
+everypixel video translation-languages
+
+everypixel video translate --video ./input.mp4 --output-language Spanish \
+  --model heygen-precision --download ./outputs
+```
+
+Translation creates one task for one target language. Use `--estimate-cost`
+with HeyGen lipsync or translation to request a quote.
 
 `--speaker`, `--style`, `--language`, and `--seed` are Qwen controls;
 `--character` applies only to Qwen voice design. ElevenLabs synthesis uses

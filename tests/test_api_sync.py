@@ -105,7 +105,7 @@ def test_bundled_openapi_has_current_video_edit_contract():
     for name in ("Seedance2VideoGenRequest", "Seedance2VideoEditRequest"):
         properties = components[name]["properties"]
         assert properties["seed"]["minimum"] == -1
-        assert properties["seed"]["maximum"] == 4_294_967_295
+        assert properties["seed"]["maximum"] == 2_147_483_647
         assert properties["draft"]["default"] is False
         assert properties["draft_from_task_id"]["anyOf"][0]["format"] == "uuid"
     assert {"seed", "draft", "draft_from_task_id", "draft_expires_at"} <= (
@@ -135,63 +135,41 @@ def test_bundled_openapi_has_current_image_enums_and_quality_ugc():
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     components = schema["components"]["schemas"]
 
-    assert components["ImageStyleEnum"]["enum"] == [
-        "portrait",
-        "transparent",
-    ]
-    assert components["ImageGenerateModelEnum"]["enum"] == [
-        "flux3",
-        "gpt-image-2",
-        "gpt-image-2.5-sunburst",
-        "zimage",
-        "wan2.7",
-        "wan2.7-pro",
-        "flux2",
-        "grok-imagine",
-        "grok-imagine-2",
-        "grok-imagine-2-low",
-        "gemini-3.1-flash",
-        "gemini-nano-banana-2.1",
-        "gemini-3.1-flash-lite",
-        "gemini-3-pro",
-        "seedream-5-pro",
-        "seedream-5-flash",
-        "seedream-5",
-        "recraftv4_1_vector",
-        "recraftv4_1_pro_vector",
-    ]
-    assert components["ImageEditModelEnum"]["enum"] == [
-        "flux3",
-        "gpt-image-2",
-        "gpt-image-2.5-sunburst",
-        "flux2",
-        "qwen",
-        "wan2.7",
-        "wan2.7-pro",
-        "grok-imagine",
-        "grok-imagine-2",
-        "grok-imagine-2-low",
-        "gemini-3.1-flash",
-        "gemini-nano-banana-2.1",
-        "gemini-3.1-flash-lite",
-        "gemini-3-pro",
-        "seedream-5-pro",
-        "seedream-5-flash",
-        "seedream-5",
-    ]
-    assert components["ImageGenerateResolutionEnum"]["enum"] == [
-        "1k",
-        "2k",
-        "3k",
-        "4k",
-    ]
+    for operation, model_type in (
+        ("generate", ImageGenerateModel),
+        ("edit", ImageEditModel),
+    ):
+        body = schema["paths"][f"/v1/image_{operation}"]["post"]["requestBody"][
+            "content"
+        ]["application/json"]["schema"]
+        mapping = body["discriminator"]["mapping"]
+        assert set(mapping) == set(get_args(model_type)) - {"grok"}
+        for version in ("2", "2.5", "2.6"):
+            model = "gpt-image-2" if version == "2" else f"gpt-image-{version}-sunburst"
+            name = f"GPTImage{version.replace('.', '')}{operation.title()}Request"
+            assert mapping[model] == f"#/components/schemas/{name}"
+            properties = components[name]["properties"]
+            assert properties["quality"]["default"] == "medium"
+            assert properties["resolution"]["enum"] == ["1k", "2k", "3k"]
+        formats = components[f"GPTImage26{operation.title()}Request"]["properties"][
+            "output_format"
+        ]["enum"]
+        assert formats == (
+            ["png", "jpeg", "webp", "gif", "svg"]
+            if operation == "generate"
+            else ["png", "jpeg", "webp", "gif"]
+        )
+    assert (
+        components["ZImageGenerateRequest"]["properties"]["style"]["const"]
+        == "portrait"
+    )
+    assert (
+        components["Flux2ImageGenerateRequest"]["properties"]["style"]["anyOf"][0][
+            "const"
+        ]
+        == "transparent"
+    )
     assert "/v1/quality_ugc" in schema["paths"]
-    assert set(components["ImageGenerateModelEnum"]["enum"]) == set(
-        get_args(ImageGenerateModel)
-    ) - {"grok"}
-    assert set(components["ImageEditModelEnum"]["enum"]) == set(
-        get_args(ImageEditModel)
-    ) - {"grok"}
     assert components["ImageQualityEnum"]["enum"] == [
         "low",
         "medium",
@@ -199,10 +177,6 @@ def test_bundled_openapi_has_current_image_enums_and_quality_ugc():
         "xhigh",
         "max",
     ]
-    for name in ("ImgenRequest", "ImageEditRequest"):
-        assert {"$ref": "#/components/schemas/ImageQualityEnum"} in (
-            components[name]["properties"]["quality"]["anyOf"]
-        )
 
 
 def test_bundled_chat_contract_matches_local_request_schema():
@@ -387,3 +361,78 @@ def test_bundled_balance_and_cost_estimation_contract():
             ]
         )
     assert endpoints == COST_ESTIMATE_ENDPOINTS
+
+
+def test_bundled_heygen_contract():
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    components = schema["components"]["schemas"]
+    for path, method, operation_id in (
+        ("video_translate", "post", "video_translate_v1_video_translate_post"),
+        (
+            "video_translate/languages",
+            "get",
+            "translation_languages_v1_video_translate_languages_get",
+        ),
+        ("heygen/voices", "get", "heygen_voices_v1_heygen_voices_get"),
+    ):
+        assert schema["paths"][f"/v1/{path}"][method]["operationId"] == operation_id
+    assert components["LipsyncRequest"]["properties"]["model"]["enum"] == [
+        "inftalk",
+        "heygen-speed",
+        "heygen-precision",
+    ]
+    avatar = components["HeyGenImageLipsyncRequest"]
+    assert avatar["properties"]["model"]["const"] == "heygen-avatar-4"
+    assert avatar["additionalProperties"] is False
+    assert {"$ref": "#/components/schemas/HeyGenImageLipsyncRequest"} in schema[
+        "paths"
+    ]["/v1/image_lipsync"]["post"]["requestBody"]["content"]["application/json"][
+        "schema"
+    ]["anyOf"]
+
+
+def test_image_provider_schemas_match_bundled_contract():
+    from pydantic import TypeAdapter
+    from everypixel_cli.schemas import ImageGeneratePayload, ImageEditPayload
+
+    document = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+
+    def normalized(value, definitions):
+        if isinstance(value, dict):
+            if "$ref" in value:
+                return normalized(
+                    {
+                        **definitions[value["$ref"].rsplit("/", 1)[1]],
+                        **{key: item for key, item in value.items() if key != "$ref"},
+                    },
+                    definitions,
+                )
+            return {
+                key: normalized(item, definitions)
+                for key, item in value.items()
+                if key not in {"title", "description", "additionalProperties"}
+                and not (key == "default" and item is None)
+            }
+        if isinstance(value, list):
+            return [normalized(item, definitions) for item in value]
+        return value
+
+    for operation, payload_type in (
+        ("generate", ImageGeneratePayload),
+        ("edit", ImageEditPayload),
+    ):
+        local = TypeAdapter(payload_type).json_schema()
+        remote = document["paths"][f"/v1/image_{operation}"]["post"]["requestBody"][
+            "content"
+        ]["application/json"]["schema"]
+        assert (
+            local["discriminator"]["mapping"].keys()
+            == remote["discriminator"]["mapping"].keys()
+        )
+        for model, ref in local["discriminator"]["mapping"].items():
+            actual = normalized({"$ref": ref}, local["$defs"])
+            expected = normalized(
+                {"$ref": remote["discriminator"]["mapping"][model]},
+                document["components"]["schemas"],
+            )
+            assert actual == expected, model

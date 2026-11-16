@@ -42,14 +42,18 @@ from ..schemas import (
     TTSVoiceSavePayload,
     TTSVoicesPayload,
     TTSVoiceDeletePayload,
-    GPT_IMAGE_MODEL_QUALITIES,
+    HeyGenImageLipsyncPayload,
+    HeyGenVoicesPayload,
+    VideoTranslatePayload,
+    RecraftVectorModel,
+    ImageEditModel,
+    ImageGenerateModel,
     ImageEditPayload,
     ImageGeneratePayload,
     ImageUpscalePayload,
     ImageVectorizePayload,
     LipsyncImagePayload,
     LipsyncVideoPayload,
-    RecraftGeneratePayload,
     TaskResponse,
     VideoEditRequest,
     VideoGenerateRequest,
@@ -79,6 +83,7 @@ COST_ESTIMATE_ENDPOINTS = frozenset(
         "image_edit_colors",
         "video_lipsync",
         "image_lipsync",
+        "video_translate",
         "video_generate",
         "video_edit",
         "video_upscale",
@@ -717,10 +722,26 @@ def build_video_edit_payload(
     return builder(inputs)
 
 
-_IMAGE_GENERATE_BUILDERS: dict[str, type[BaseModel]] = {
-    "recraftv4_1_vector": RecraftGeneratePayload,
-    "recraftv4_1_pro_vector": RecraftGeneratePayload,
-}
+_IMAGE_GENERATE_ADAPTER: TypeAdapter[ImageGeneratePayload] = TypeAdapter(
+    ImageGeneratePayload
+)
+_IMAGE_EDIT_ADAPTER: TypeAdapter[ImageEditPayload] = TypeAdapter(ImageEditPayload)
+
+
+def dump_image_payload(payload: BaseModel) -> dict[str, Any]:
+    # GIF sizing is automatic; sending materialized size defaults is invalid.
+    exclude = (
+        {"image_size", "resolution"}
+        if getattr(payload, "output_format", None) == "gif"
+        else set()
+    )
+    return payload.model_dump(mode="json", exclude_none=True, exclude=exclude)
+
+
+def image_fallback_extension(payload: Mapping[str, Any]) -> str:
+    if payload.get("model") in get_args(RecraftVectorModel):
+        return ".svg"
+    return "." + str(payload.get("output_format", "png"))
 
 
 def build_image_generate_payload(**values: Any) -> dict[str, Any]:
@@ -735,22 +756,25 @@ def build_image_generate_payload(**values: Any) -> dict[str, Any]:
             values["controls"] = json.loads(controls)
         except json.JSONDecodeError as exc:
             raise InputParsingError("Unable to parse Recraft controls JSON") from exc
-    builder = _IMAGE_GENERATE_BUILDERS.get(
-        values.get("model", "zimage"), ImageGeneratePayload
+    return dump_image_payload(
+        _IMAGE_GENERATE_ADAPTER.validate_python(
+            {key: value for key, value in values.items() if value is not None}
+        )
     )
-    return builder.model_validate(
-        {key: value for key, value in values.items() if value is not None}
-    ).model_dump(mode="json", exclude_none=True)
 
 
 def build_image_edit_payload(**values: Any) -> dict[str, Any]:
     """Validate image edit payloads and encode every local source image."""
 
     images = values.pop("images")
-    return ImageEditPayload(
-        **{key: value for key, value in values.items() if value is not None},
-        image_urls=[media_value(item) for item in images],
-    ).model_dump(mode="json", exclude_none=True)
+    return dump_image_payload(
+        _IMAGE_EDIT_ADAPTER.validate_python(
+            {
+                **{key: value for key, value in values.items() if value is not None},
+                "image_urls": [media_value(item) for item in images],
+            }
+        )
+    )
 
 
 def build_image_vectorize_payload(
@@ -860,9 +884,19 @@ def build_lipsync_video_payload(**values: Any) -> dict[str, Any]:
 
     video = values.pop("video")
     audio = values.pop("audio")
-    return LipsyncVideoPayload(
+    payload = LipsyncVideoPayload(
         **values, video_url=media_value(video), audio_url=media_value(audio)
-    ).model_dump(exclude_none=True)
+    )
+    return payload.model_dump(
+        exclude_none=True, exclude={"model"} if "model" not in values else set()
+    )
+
+
+_LIPSYNC_IMAGE_BUILDERS: dict[str, type[BaseModel]] = {
+    "inftalk": LipsyncImagePayload,
+    "ltx23": LipsyncImagePayload,
+    "heygen-avatar-4": HeyGenImageLipsyncPayload,
+}
 
 
 def build_lipsync_image_payload(**values: Any) -> dict[str, Any]:
@@ -870,9 +904,26 @@ def build_lipsync_image_payload(**values: Any) -> dict[str, Any]:
 
     image = values.pop("image")
     audio = values.pop("audio")
-    return LipsyncImagePayload(
-        **values, image_url=media_value(image), audio_url=media_value(audio)
-    ).model_dump(exclude_none=True)
+    builder = _LIPSYNC_IMAGE_BUILDERS.get(
+        values.get("model", "inftalk"), LipsyncImagePayload
+    )
+    return builder.model_validate(
+        {
+            **{key: value for key, value in values.items() if value is not None},
+            "image_url": media_value(image),
+            **({"audio_url": media_value(audio)} if audio is not None else {}),
+        }
+    ).model_dump(mode="json", exclude_none=True)
+
+
+def build_video_translate_payload(*, video: str, **values: Any) -> dict[str, Any]:
+    """Validate translation inputs after encoding local video media."""
+    return VideoTranslatePayload.model_validate(
+        {
+            "video_url": media_value(video),
+            **values,
+        }
+    ).model_dump(mode="json", exclude_none=True)
 
 
 def build_media_payload(
@@ -1016,7 +1067,7 @@ class ApplicationServices:
         *,
         prompt: str,
         model: str,
-        image_size: str,
+        image_size: str | None,
         style: str | None,
         image: str | None,
         resolution: str | None,
@@ -1026,6 +1077,11 @@ class ApplicationServices:
         lora_url: str | None = None,
         controls: dict[str, Any] | str | None = None,
         quality: str | None = None,
+        complexity: str | None = None,
+        output_format: str | None = None,
+        output_compression: int | None = None,
+        frame_count: int | None = None,
+        frame_duration_ms: int | None = None,
     ) -> OperationResult:
         payload = build_image_generate_payload(
             prompt=prompt,
@@ -1039,14 +1095,17 @@ class ApplicationServices:
             lora_url=lora_url,
             controls=controls,
             quality=quality,
+            complexity=complexity,
+            output_format=output_format,
+            output_compression=output_compression,
+            frame_count=frame_count,
+            frame_duration_ms=frame_duration_ms,
         )
         return self._execute_async(
             endpoint="/v1/image_generate",
             payload=payload,
             execution=execution,
-            fallback_extension=(
-                ".svg" if model in _IMAGE_GENERATE_BUILDERS else ".png"
-            ),
+            fallback_extension=image_fallback_extension(payload),
         )
 
     def execute_image_vectorize(
@@ -1077,8 +1136,13 @@ class ApplicationServices:
         seed: int,
         callback_url: str | None,
         execution: ExecutionOptions,
-        megapixel_ratio: float = 1.0,
+        megapixel_ratio: float | None = None,
         quality: str | None = None,
+        complexity: str | None = None,
+        output_format: str | None = None,
+        output_compression: int | None = None,
+        frame_count: int | None = None,
+        frame_duration_ms: int | None = None,
     ) -> OperationResult:
         payload = build_image_edit_payload(
             prompt=prompt,
@@ -1088,6 +1152,11 @@ class ApplicationServices:
             resolution=resolution,
             megapixel_ratio=megapixel_ratio,
             quality=quality,
+            complexity=complexity,
+            output_format=output_format,
+            output_compression=output_compression,
+            frame_count=frame_count,
+            frame_duration_ms=frame_duration_ms,
             seed=seed,
             callback_url=callback_url,
         )
@@ -1095,7 +1164,7 @@ class ApplicationServices:
             endpoint="/v1/image_edit",
             payload=payload,
             execution=execution,
-            fallback_extension=".png",
+            fallback_extension=image_fallback_extension(payload),
         )
 
     def execute_image_upscale(
@@ -1282,8 +1351,10 @@ class ApplicationServices:
         seed: int,
         callback_url: str | None,
         execution: ExecutionOptions,
+        model: str | None = None,
     ) -> OperationResult:
         payload = build_lipsync_video_payload(
+            **({"model": model} if model is not None else {}),
             video=video,
             audio=audio,
             resolution=resolution,
@@ -1302,15 +1373,23 @@ class ApplicationServices:
         self,
         *,
         image: str,
-        audio: str,
+        audio: str | None,
         model: str,
-        resolution: str,
+        resolution: str | None,
         prompt: str | None,
-        seed: int,
+        seed: int | None,
         callback_url: str | None,
         execution: ExecutionOptions,
+        text: str | None = None,
+        voice_id: str | None = None,
+        aspect_ratio: str | None = None,
+        expressiveness: str | None = None,
     ) -> OperationResult:
         payload = build_lipsync_image_payload(
+            text=text,
+            voice_id=voice_id,
+            aspect_ratio=aspect_ratio,
+            expressiveness=expressiveness,
             image=image,
             audio=audio,
             model=model,
@@ -1324,6 +1403,56 @@ class ApplicationServices:
             payload=payload,
             execution=execution,
             fallback_extension=".mp4",
+        )
+
+    def execute_video_translate(
+        self,
+        *,
+        video: str,
+        output_language: str,
+        model: str = "heygen-speed",
+        callback_url: str | None = None,
+        execution: ExecutionOptions,
+    ) -> OperationResult:
+        payload = build_video_translate_payload(
+            video=video,
+            output_language=output_language,
+            model=model,
+            callback_url=callback_url,
+        )
+        return self._execute_async(
+            endpoint="/v1/video_translate",
+            payload=payload,
+            execution=execution,
+            fallback_extension=".mp4",
+        )
+
+    def list_translation_languages(self) -> OperationResult:
+        return self._operations.execute(
+            OperationRequest(
+                endpoint="/v1/video_translate/languages",
+                method="GET",
+                payload={},
+                execution=ExecutionOptions(),
+            )
+        )
+
+    def list_heygen_voices(
+        self,
+        *,
+        language: str | None = None,
+        limit: int = 20,
+        token: str | None = None,
+    ) -> OperationResult:
+        return self._operations.execute(
+            OperationRequest(
+                endpoint="/v1/heygen/voices",
+                method="GET",
+                payload=HeyGenVoicesPayload(
+                    language=language, limit=limit, token=token
+                ).model_dump(exclude_none=True),
+                execution=ExecutionOptions(),
+            )
         )
 
     def execute_audio_transcribe(
@@ -1583,16 +1712,24 @@ class ApplicationServices:
                 payload = normalize_image_quality(payload)
             except ValueError as exc:
                 raise ValidationCLIError(str(exc)) from exc
-            if (
-                isinstance(payload.get("model"), str)
-                and payload["model"] in GPT_IMAGE_MODEL_QUALITIES
-            ):
-                image_schema = (
-                    ImageGeneratePayload
-                    if path == "/v1/image_generate"
-                    else ImageEditPayload
-                )
-                image_schema.model_validate(payload, extra="ignore")
+            image_adapter, models = (
+                (_IMAGE_GENERATE_ADAPTER, ImageGenerateModel)
+                if path == "/v1/image_generate"
+                else (_IMAGE_EDIT_ADAPTER, ImageEditModel)
+            )
+            if "model" not in payload or payload.get("model") in get_args(models):
+                image_adapter.validate_python(payload, extra="ignore")
+        if path == "/v1/image_lipsync":
+            builder = _LIPSYNC_IMAGE_BUILDERS.get(
+                payload.get("model", "inftalk"), LipsyncImagePayload
+            )
+            builder.model_validate(payload, extra="ignore")
+        if path == "/v1/video_lipsync":
+            LipsyncVideoPayload.model_validate(payload, extra="ignore")
+        if path == "/v1/video_translate":
+            VideoTranslatePayload.model_validate(payload, extra="ignore")
+        if path == "/v1/heygen/voices":
+            HeyGenVoicesPayload.model_validate(payload)
         if path == "/v1/video_generate" and payload.get("model") in get_args(
             VideoGenerateModel
         ):
@@ -1645,9 +1782,8 @@ class ApplicationServices:
                 payload=payload,
                 execution=execution,
                 fallback_extension=(
-                    ".svg"
-                    if path == "/v1/image_generate"
-                    and payload.get("model") in _IMAGE_GENERATE_BUILDERS
+                    image_fallback_extension(payload)
+                    if path in {"/v1/image_generate", "/v1/image_edit"}
                     else fallback_extension_for_endpoint(path)
                 ),
             )

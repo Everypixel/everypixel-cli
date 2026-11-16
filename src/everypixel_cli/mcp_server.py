@@ -51,6 +51,7 @@ from .schemas import (
     ImageSize,
     ImageStyle,
     LipsyncImageModel,
+    LipsyncVideoModel,
     LipsyncImageResolution,
     LipsyncVideoResolution,
     PublicFigureThreshold,
@@ -174,13 +175,18 @@ class ChatInput(MCPToolInput, ChatRequest):
 class ImageGenerateInput(MCPToolInput):
     prompt: str
     model: ImageGenerateModel = "zimage"
-    image_size: ImageSize = "square"
+    image_size: ImageSize | None = None
     style: ImageStyle | None = None
     image: str | None = None
     lora_url: str | None = None
     controls: RecraftControls | None = None
     resolution: ImageResolution | None = None
     quality: ImageQuality | None = None
+    complexity: Literal["low", "medium", "high"] | None = None
+    output_format: Literal["png", "jpeg", "webp", "gif", "svg"] | None = None
+    output_compression: int | None = Field(default=None, ge=0, le=100, strict=True)
+    frame_count: int | None = Field(default=None, ge=2, le=16, strict=True)
+    frame_duration_ms: int | None = Field(default=None, ge=20, le=2000, strict=True)
     seed: int = -1
     callback_url: str | None = None
     execution: MCPExecutionOptions | None = None
@@ -193,7 +199,12 @@ class ImageEditInput(MCPToolInput):
     image_size: ImageSize | None = None
     resolution: ImageResolution | None = None
     quality: ImageQuality | None = None
-    megapixel_ratio: float = Field(default=1.0, ge=0.5, le=1.5)
+    complexity: Literal["low", "medium", "high"] | None = None
+    output_format: Literal["png", "jpeg", "webp", "gif"] | None = None
+    output_compression: int | None = Field(default=None, ge=0, le=100, strict=True)
+    frame_count: int | None = Field(default=None, ge=2, le=16, strict=True)
+    frame_duration_ms: int | None = Field(default=None, ge=20, le=2000, strict=True)
+    megapixel_ratio: float | None = Field(default=None, ge=0.5, le=1.5)
     seed: int = -1
     callback_url: str | None = None
     execution: MCPExecutionOptions | None = None
@@ -275,6 +286,7 @@ class VideoUpscaleInput(MCPToolInput):
 class LipsyncVideoInput(MCPToolInput):
     video: str
     audio: str
+    model: LipsyncVideoModel | None = None
     resolution: LipsyncVideoResolution = "480p"
     prompt: str | None = None
     seed: int = -1
@@ -284,13 +296,31 @@ class LipsyncVideoInput(MCPToolInput):
 
 class LipsyncImageInput(MCPToolInput):
     image: str
-    audio: str
+    audio: str | None = None
     model: LipsyncImageModel = "inftalk"
-    resolution: LipsyncImageResolution = "480p"
+    resolution: Literal[LipsyncImageResolution, "1080p"] | None = None
+    text: str | None = None
+    voice_id: str | None = None
+    aspect_ratio: str | None = None
+    expressiveness: Literal["low", "medium", "high"] | None = None
     prompt: str | None = None
-    seed: int = -1
+    seed: int | None = None
     callback_url: str | None = None
     execution: MCPExecutionOptions | None = None
+
+
+class VideoTranslateInput(MCPToolInput):
+    video: str
+    output_language: str
+    model: Literal["heygen-speed", "heygen-precision"] = "heygen-speed"
+    callback_url: str | None = None
+    execution: MCPExecutionOptions | None = None
+
+
+class HeyGenVoicesInput(MCPToolInput):
+    language: str | None = None
+    limit: int = Field(default=20, ge=1, le=100)
+    token: str | None = None
 
 
 class AudioTranscribeInput(MCPToolInput):
@@ -558,6 +588,11 @@ def create_mcp_server(
             ),
             resolution=arguments.resolution,
             quality=arguments.quality,
+            complexity=arguments.complexity,
+            output_format=arguments.output_format,
+            output_compression=arguments.output_compression,
+            frame_count=arguments.frame_count,
+            frame_duration_ms=arguments.frame_duration_ms,
             seed=arguments.seed,
             callback_url=arguments.callback_url,
             execution=_execution(arguments.execution),
@@ -575,6 +610,11 @@ def create_mcp_server(
             resolution=arguments.resolution,
             megapixel_ratio=arguments.megapixel_ratio,
             quality=arguments.quality,
+            complexity=arguments.complexity,
+            output_format=arguments.output_format,
+            output_compression=arguments.output_compression,
+            frame_count=arguments.frame_count,
+            frame_duration_ms=arguments.frame_duration_ms,
             seed=arguments.seed,
             callback_url=arguments.callback_url,
             execution=_execution(arguments.execution),
@@ -690,6 +730,7 @@ def create_mcp_server(
         """Synchronize lips in a video to an audio track."""
 
         return services_factory().execute_lipsync_video(
+            model=arguments.model,
             video=arguments.video,
             audio=arguments.audio,
             resolution=arguments.resolution,
@@ -704,6 +745,10 @@ def create_mcp_server(
         """Create a lipsync video from a still image and audio track."""
 
         return services_factory().execute_lipsync_image(
+            text=arguments.text,
+            voice_id=arguments.voice_id,
+            aspect_ratio=arguments.aspect_ratio,
+            expressiveness=arguments.expressiveness,
             image=arguments.image,
             audio=arguments.audio,
             model=arguments.model,
@@ -713,6 +758,27 @@ def create_mcp_server(
             callback_url=arguments.callback_url,
             execution=_execution(arguments.execution),
         )
+
+    @registry.tool(VideoTranslateInput, annotations=LOCAL_WRITE)
+    def video_translate(arguments: VideoTranslateInput) -> Any:
+        """Translate a video to one target language with HeyGen."""
+        return services_factory().execute_video_translate(
+            video=arguments.video,
+            output_language=arguments.output_language,
+            model=arguments.model,
+            callback_url=arguments.callback_url,
+            execution=_execution(arguments.execution),
+        )
+
+    @registry.tool(NoInput, annotations=READ_ONLY)
+    def translation_languages(_arguments: NoInput) -> Any:
+        """List supported HeyGen translation languages."""
+        return services_factory().list_translation_languages()
+
+    @registry.tool(HeyGenVoicesInput, annotations=READ_ONLY)
+    def heygen_voices(arguments: HeyGenVoicesInput) -> Any:
+        """List public HeyGen voices."""
+        return services_factory().list_heygen_voices(**arguments.model_dump())
 
     @registry.tool(AudioTranscribeInput, annotations=LOCAL_WRITE)
     def audio_transcribe(arguments: AudioTranscribeInput) -> Any:

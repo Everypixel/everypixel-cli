@@ -32,6 +32,9 @@ EXPECTED_TOOLS = {
     "video_upscale",
     "lipsync_video",
     "lipsync_image",
+    "video_translate",
+    "translation_languages",
+    "heygen_voices",
     "audio_transcribe",
     "tts_create",
     "tts_clone",
@@ -104,7 +107,7 @@ def test_mcp_server_exposes_application_use_cases_with_generated_schemas() -> No
     image_generate_schema = tools["image_generate"].input_schema
     assert image_generate_schema["required"] == ["prompt"]
     assert "zimage" in image_generate_schema["properties"]["model"]["enum"]
-    assert image_generate_schema["properties"]["image_size"]["enum"] == [
+    assert image_generate_schema["properties"]["image_size"]["anyOf"][0]["enum"] == [
         "square",
         "portrait_3_2",
         "portrait_4_3",
@@ -144,8 +147,10 @@ def test_mcp_tool_delegates_to_application_services_and_serializes_result() -> N
                 "image_generate",
                 {
                     "prompt": "product photo",
-                    "model": "gpt-image-2.5-sunburst",
+                    "model": "gpt-image-2.6-sunburst",
                     "quality": "max",
+                    "output_format": "gif",
+                    "frame_count": 2,
                     "execution": {
                         "download_directory": "/tmp/everypixel-output",
                         "timeout": 12,
@@ -160,8 +165,11 @@ def test_mcp_tool_delegates_to_application_services_and_serializes_result() -> N
     assert result.structured_content == {"task_id": "task-1", "status": "PENDING"}
     name, arguments = services.calls[0]
     assert name == "execute_image_generate"
-    assert arguments["model"] == "gpt-image-2.5-sunburst"
+    assert arguments["model"] == "gpt-image-2.6-sunburst"
     assert arguments["quality"] == "max"
+    assert arguments["output_format"] == "gif"
+    assert arguments["frame_count"] == 2
+    assert arguments["image_size"] is None
     assert arguments["execution"].wait is True
     assert arguments["execution"].download_directory == Path("/tmp/everypixel-output")
     assert arguments["execution"].timeout == 12
@@ -517,3 +525,61 @@ def test_mcp_video_edit_forwards_owned_task_id() -> None:
         "video_from_task_id": task_id,
         "resolution": "720p",
     }
+
+
+@pytest.mark.parametrize(
+    "tool,arguments,path,method",
+    [
+        (
+            "lipsync_image",
+            {
+                "model": "heygen-avatar-4",
+                "image": "https://img.test/a.png",
+                "text": "Hello",
+                "voice_id": "voice",
+            },
+            "image_lipsync",
+            "POST",
+        ),
+        (
+            "video_translate",
+            {"video": "https://cdn.test/a.mp4", "output_language": "Spanish"},
+            "video_translate",
+            "POST",
+        ),
+        ("heygen_voices", {"language": "English", "limit": 2}, "heygen/voices", "GET"),
+        ("translation_languages", {}, "video_translate/languages", "GET"),
+    ],
+)
+@respx.mock
+def test_mcp_heygen_tools_call_public_endpoints(tool, arguments, path, method):
+    route = respx.route(method=method, url=f"https://api.test/v1/{path}").respond(
+        200, json={"data": "result"}
+    )
+    services = ApplicationServices.with_client(
+        APIClient(base_url="https://api.test", client_id="id", client_secret="secret")
+    )
+
+    async def call_tool():
+        async with Client(create_mcp_server(lambda: services)) as client:
+            return await client.call_tool(tool, arguments)
+
+    try:
+        result = asyncio.run(call_tool())
+    finally:
+        services.close()
+    assert result.is_error is False
+    assert result.structured_content == {"data": "result"}
+    assert route.call_count == 1
+    if tool == "lipsync_image":
+        body = json.loads(route.calls[0].request.content)
+        assert body["resolution"] == "1080p" and "seed" not in body
+    elif tool == "video_translate":
+        assert (
+            json.loads(route.calls[0].request.content)["output_language"] == "Spanish"
+        )
+    elif tool == "heygen_voices":
+        assert dict(route.calls[0].request.url.params) == {
+            "language": "English",
+            "limit": "2",
+        }
