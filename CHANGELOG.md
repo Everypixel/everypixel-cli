@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.6.1] - 2026-11-18
+
+- Add Gemini Omni 1.2 Flash video generation and editing.
+- Add HeyGen Avatar 6 and Turbo photo animation with audio and 2K output.
+
 ## [0.6.0] - 2026-11-16
 
 - Add GPT Image 2.6 Sunburst with format, compression, and animation controls.

@@ -621,6 +621,7 @@ VideoGenerateModel = Literal[
     "grok-imagine-1.5",
     "flux3",
     "gemini-omni-1.1-flash",
+    "gemini-omni-1.2-flash",
     "seedance2",
     "seedance2-mini",
     "seedance2.5",
@@ -633,6 +634,7 @@ VideoGenerateModel = Literal[
 ]
 VideoEditModel = Literal[
     "gemini-omni-1.1-flash",
+    "gemini-omni-1.2-flash",
     "seedance2",
     "seedance2-mini",
     "seedance2.5",
@@ -748,17 +750,31 @@ class Grok15VideoGenRequest(_StrictVideoPayload):
 
 class OmniVideoGenRequest(_StrictVideoPayload):
     prompt: str = Field(min_length=1)
-    model: Literal["gemini-omni-1.1-flash"] = "gemini-omni-1.1-flash"
-    duration: int = Field(default=8, ge=3, le=10)
+    model: Literal["gemini-omni-1.1-flash", "gemini-omni-1.2-flash"] = (
+        "gemini-omni-1.2-flash"
+    )
+    duration: int = Field(default=8, ge=3, le=15)
     resolution: OmniVideoResolution = "720p"
     aspect_ratio: OmniVideoAspectRatio = "16:9"
     image_url: str | None = None
     image_last_url: str | None = None
-    reference_image_urls: list[str] = Field(default_factory=list, max_length=3)
+    reference_image_urls: list[str] = Field(default_factory=list, max_length=6)
     callback_url: HttpUrl | None = None
 
     @model_validator(mode="after")
     def validate_frames(self) -> "OmniVideoGenRequest":
+        max_duration = (
+            10 if self.model == "gemini-omni-1.1-flash" or self.image_last_url else 15
+        )
+        max_references = 3 if self.model == "gemini-omni-1.1-flash" else 6
+        if self.duration > max_duration:
+            raise ValueError(
+                f"This Omni generation mode supports at most {max_duration} seconds"
+            )
+        if len(self.reference_image_urls) > max_references:
+            raise ValueError(
+                f"This Omni model supports at most {max_references} reference images"
+            )
         for value in (self.image_url, self.image_last_url):
             if value is not None and not value.startswith(
                 ("http://", "https://", "data:image/")
@@ -1078,7 +1094,9 @@ class VideoEditSourcePayload(_StrictVideoPayload):
 
 class OmniVideoEditPayload(_StrictVideoPayload):
     prompt: str = Field(min_length=1)
-    model: Literal["gemini-omni-1.1-flash"] = "gemini-omni-1.1-flash"
+    model: Literal["gemini-omni-1.1-flash", "gemini-omni-1.2-flash"] = (
+        "gemini-omni-1.2-flash"
+    )
     video_from_task_id: UUID
     resolution: OmniVideoResolution = "720p"
     callback_url: HttpUrl | None = None
@@ -1338,7 +1356,9 @@ class ImageUpscalePayload(BaseModel):
 VideoUpscaleResolution = Literal["720p", "1080p", "1440p", "4k"]
 VideoUpscaleModel = Literal["seedvr2", "topaz-prob-4", "topaz-slp-2.5", "topaz-ast-2"]
 LipsyncVideoResolution = Literal["360p", "480p", "720p"]
-LipsyncImageModel = Literal["inftalk", "ltx23", "heygen-avatar-4"]
+LipsyncImageModel = Literal[
+    "inftalk", "ltx23", "heygen-avatar-4", "heygen-avatar-6", "heygen-avatar-6-turbo"
+]
 LipsyncVideoModel = Literal["inftalk", "heygen-speed", "heygen-precision"]
 LipsyncImageResolution = Literal["360p", "480p", "720p"]
 
@@ -1424,6 +1444,31 @@ class HeyGenImageLipsyncPayload(BaseModel):
         ):
             raise ValueError("Provide audio_url or text with voice_id")
         return self
+
+
+class HeyGenAvatar6Payload(BaseModel):
+    """Avatar 6 animates a photo using supplied audio and motion controls."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    model: Literal["heygen-avatar-6", "heygen-avatar-6-turbo"]
+    image_url: str
+    audio_url: str
+    resolution: Literal["1080p", "2k"] = "1080p"
+    prompt: str | None = Field(default=None, min_length=1, max_length=1200)
+    motion_expressiveness: Literal["default", "less"] = "default"
+    callback_url: HttpUrl | None = None
+
+    @field_validator("image_url")
+    @classmethod
+    def validate_image(cls, value: str) -> str:
+        validate_frame_inputs(value, None)
+        return value
+
+    @field_validator("audio_url")
+    @classmethod
+    def validate_audio(cls, value: str) -> str:
+        return validate_tts_media(value)
 
 
 class VideoTranslatePayload(BaseModel):

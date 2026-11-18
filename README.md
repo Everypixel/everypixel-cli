@@ -215,16 +215,16 @@ everypixel video edit "continue the scene with a slow camera pan" \
   --model flux3 --video ./input.mp4 --download ./outputs
 ```
 
-Generate a video with Gemini Omni 1.1 Flash, then edit the completed task:
+Generate a video with Gemini Omni 1.2 Flash, then edit the completed task:
 
 ```bash
 task_id="$(
   everypixel video generate "a slow aerial shot over mountain lakes" \
-    --model gemini-omni-1.1-flash --output-json | jq -er '.task_id'
+    --model gemini-omni-1.2-flash --output-json | jq -er '.task_id'
 )"
 
 everypixel video edit "change the scene to sunset" \
-  --model gemini-omni-1.1-flash --task-id "$task_id" --download ./outputs
+  --model gemini-omni-1.2-flash --task-id "$task_id" --download ./outputs
 ```
 
 Gemini Omni editing requires an owned Gemini Omni source task. Other editing
@@ -298,15 +298,26 @@ everypixel audio tts-create --model qwen3 --text "Hello world" \
 HeyGen video lipsync accepts `--model heygen-speed|heygen-precision` with
 `--video` and `--audio`. Audio and video durations must differ by at most 15%.
 HeyGen Avatar 4 uses `lipsync image --model heygen-avatar-4` with either
-`--audio` or `--text` plus `--voice-id`. Avatar-only options are
+`--audio` or `--text` plus `--voice-id`. Avatar 4 options are
 `--aspect-ratio`, `--expressiveness low|medium|high`, and `--resolution 720p|1080p`
 (default: `1080p`); `--prompt` directs motion. Avatar 4 does not accept `--seed`.
+
+HeyGen Avatar 6 (`heygen-avatar-6`, `heygen-avatar-6-turbo`) requires `--image`
+and `--audio`. It accepts
+`--resolution 1080p|2k` (default: `1080p`), preserves the photo's aspect ratio,
+and supports `--expressiveness default|less` plus a motion `--prompt`
+(up to 1200 characters). Text, voice ID, aspect ratio, and seed options belong
+to other models.
 
 ```bash
 everypixel lipsync heygen-voices --language English --limit 20
 
 everypixel lipsync image --model heygen-avatar-4 --image ./portrait.png \
   --text "Hello!" --voice-id VOICE_ID --download ./outputs
+
+everypixel lipsync image --model heygen-avatar-6 --image ./portrait.png \
+  --audio ./voice.mp3 --resolution 2k --expressiveness less \
+  --download ./outputs
 
 everypixel video translation-languages
 

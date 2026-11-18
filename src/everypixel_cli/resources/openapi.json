@@ -2413,6 +2413,80 @@
         "title": "HealthReport",
         "type": "object"
       },
+      "HeyGenAvatar6Request": {
+        "additionalProperties": false,
+        "description": "Animate a photo with supplied speech through HeyGen's Model API.",
+        "properties": {
+          "audio_url": {
+            "title": "Audio Url",
+            "type": "string"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_url": {
+            "title": "Image Url",
+            "type": "string"
+          },
+          "model": {
+            "enum": [
+              "heygen-avatar-6",
+              "heygen-avatar-6-turbo"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
+          "motion_expressiveness": {
+            "default": "default",
+            "enum": [
+              "default",
+              "less"
+            ],
+            "title": "Motion Expressiveness",
+            "type": "string"
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "maxLength": 1200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt"
+          },
+          "resolution": {
+            "default": "1080p",
+            "enum": [
+              "1080p",
+              "2k"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model",
+          "image_url",
+          "audio_url"
+        ],
+        "title": "HeyGenAvatar6Request",
+        "type": "object"
+      },
       "HeyGenImageLipsyncRequest": {
         "additionalProperties": false,
         "properties": {
@@ -3834,8 +3908,11 @@
             "title": "Callback Url"
           },
           "model": {
-            "const": "gemini-omni-1.1-flash",
-            "default": "gemini-omni-1.1-flash",
+            "default": "gemini-omni-1.2-flash",
+            "enum": [
+              "gemini-omni-1.1-flash",
+              "gemini-omni-1.2-flash"
+            ],
             "title": "Model",
             "type": "string"
           },
@@ -3885,7 +3962,7 @@
           },
           "duration": {
             "default": 8,
-            "maximum": 10.0,
+            "maximum": 15.0,
             "minimum": 3.0,
             "title": "Duration",
             "type": "integer"
@@ -3913,8 +3990,11 @@
             "title": "Image Url"
           },
           "model": {
-            "const": "gemini-omni-1.1-flash",
-            "default": "gemini-omni-1.1-flash",
+            "default": "gemini-omni-1.2-flash",
+            "enum": [
+              "gemini-omni-1.1-flash",
+              "gemini-omni-1.2-flash"
+            ],
             "title": "Model",
             "type": "string"
           },
@@ -3927,7 +4007,7 @@
             "items": {
               "type": "string"
             },
-            "maxItems": 3,
+            "maxItems": 6,
             "title": "Reference Image Urls",
             "type": "array"
           },
@@ -7163,6 +7243,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/HeyGenImageLipsyncRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/HeyGenAvatar6Request"
                   }
                 ],
                 "title": "Data"
@@ -8587,6 +8670,7 @@
                     "aleph2": "#/components/schemas/Aleph2VideoEditRequest",
                     "flux3": "#/components/schemas/Flux3VideoEditRequest",
                     "gemini-omni-1.1-flash": "#/components/schemas/OmniVideoEditRequest",
+                    "gemini-omni-1.2-flash": "#/components/schemas/OmniVideoEditRequest",
                     "kling-3-omni": "#/components/schemas/KlingV3OmniVideoEditRequest",
                     "seedance2": "#/components/schemas/Seedance2VideoEditRequest",
                     "seedance2-mini": "#/components/schemas/Seedance2VideoEditRequest",
@@ -8682,6 +8766,7 @@
                   "mapping": {
                     "flux3": "#/components/schemas/Flux3VideoGenRequest",
                     "gemini-omni-1.1-flash": "#/components/schemas/OmniVideoGenRequest",
+                    "gemini-omni-1.2-flash": "#/components/schemas/OmniVideoGenRequest",
                     "grok-imagine": "#/components/schemas/GrokVideoGenRequest",
                     "grok-imagine-1.5": "#/components/schemas/Grok15VideoGenRequest",
                     "kling-2.6": "#/components/schemas/KlingV26VideoGenRequest",

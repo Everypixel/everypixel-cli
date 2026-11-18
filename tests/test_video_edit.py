@@ -378,7 +378,7 @@ def test_video_generate_omni_uses_reference_image_contract(monkeypatch):
             "generate",
             "preserve the product",
             "--model",
-            "gemini-omni-1.1-flash",
+            "gemini-omni-1.2-flash",
             "--duration",
             "3",
             "--resolution",
@@ -391,7 +391,7 @@ def test_video_generate_omni_uses_reference_image_contract(monkeypatch):
 
     assert result.exit_code == 0, result.output
     payload = json.loads(route.calls[0].request.content)
-    assert payload["model"] == "gemini-omni-1.1-flash"
+    assert payload["model"] == "gemini-omni-1.2-flash"
     assert payload["duration"] == 3
     assert payload["resolution"] == "4k"
     assert payload["reference_image_urls"][0].startswith("data:image/png;base64,")
@@ -933,7 +933,7 @@ def test_generic_run_video_edit_waits_and_downloads(monkeypatch, make_temp_dir):
 
 @pytest.mark.parametrize(
     "model",
-    ["gemini-omni-1.1-flash", "seedance2", "kling-3-omni", "wan2.7", "aleph2", "flux3"],
+    ["gemini-omni-1.2-flash", "seedance2", "kling-3-omni", "wan2.7", "aleph2", "flux3"],
 )
 @respx.mock
 def test_video_edit_owned_task_matches_generic_payload(model, monkeypatch):
@@ -959,7 +959,7 @@ def test_video_edit_owned_task_matches_generic_payload(model, monkeypatch):
     payload = json.loads(route.calls[-1].request.content)
     assert payload["video_from_task_id"] == task_id
     assert "video_url" not in payload
-    if model == "gemini-omni-1.1-flash":
+    if model == "gemini-omni-1.2-flash":
         assert payload == {
             "model": model,
             "prompt": "change the lighting",

@@ -43,6 +43,7 @@ from ..schemas import (
     TTSVoicesPayload,
     TTSVoiceDeletePayload,
     HeyGenImageLipsyncPayload,
+    HeyGenAvatar6Payload,
     HeyGenVoicesPayload,
     VideoTranslatePayload,
     RecraftVectorModel,
@@ -660,6 +661,7 @@ def _build_omni_video_edit_payload(inputs: _VideoEditInputs) -> dict[str, Any]:
 
 _VIDEO_EDIT_BUILDERS: dict[str, Callable[[_VideoEditInputs], dict[str, Any]]] = {
     "gemini-omni-1.1-flash": _build_omni_video_edit_payload,
+    "gemini-omni-1.2-flash": _build_omni_video_edit_payload,
     "seedance2": _build_seedance_video_edit_payload,
     "seedance2-mini": _build_seedance_video_edit_payload,
     "seedance2.5": _build_seedance_video_edit_payload,
@@ -896,6 +898,14 @@ _LIPSYNC_IMAGE_BUILDERS: dict[str, type[BaseModel]] = {
     "inftalk": LipsyncImagePayload,
     "ltx23": LipsyncImagePayload,
     "heygen-avatar-4": HeyGenImageLipsyncPayload,
+    "heygen-avatar-6": HeyGenAvatar6Payload,
+    "heygen-avatar-6-turbo": HeyGenAvatar6Payload,
+}
+
+
+_LIPSYNC_EXPRESSIVENESS_FIELDS = {
+    "heygen-avatar-6": "motion_expressiveness",
+    "heygen-avatar-6-turbo": "motion_expressiveness",
 }
 
 
@@ -904,6 +914,14 @@ def build_lipsync_image_payload(**values: Any) -> dict[str, Any]:
 
     image = values.pop("image")
     audio = values.pop("audio")
+    expressiveness = values.pop("expressiveness", None)
+    if expressiveness is not None:
+        field = _LIPSYNC_EXPRESSIVENESS_FIELDS.get(
+            values.get("model", "inftalk"), "expressiveness"
+        )
+        if values.get(field) is not None:
+            raise ValidationCLIError("Expressiveness was provided twice")
+        values[field] = expressiveness
     builder = _LIPSYNC_IMAGE_BUILDERS.get(
         values.get("model", "inftalk"), LipsyncImagePayload
     )

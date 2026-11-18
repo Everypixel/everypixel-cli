@@ -370,13 +370,13 @@ def test_tts_preserves_text_and_rejects_qwen_over_limit(
             ],
         ],
         ["video", "generate", "x", "--model", "veo-3.1"],
-        ["video", "edit", "x", "--model", "gemini-omni-1.1-flash"],
+        ["video", "edit", "x", "--model", "gemini-omni-1.2-flash"],
         [
             "video",
             "edit",
             "x",
             "--model",
-            "gemini-omni-1.1-flash",
+            "gemini-omni-1.2-flash",
             "--task-id",
             "invalid",
         ],
@@ -385,7 +385,7 @@ def test_tts_preserves_text_and_rejects_qwen_over_limit(
             "edit",
             "x",
             "--model",
-            "gemini-omni-1.1-flash",
+            "gemini-omni-1.2-flash",
             "--task-id",
             "11111111-2222-4333-8444-555555555555",
             "--duration",
@@ -396,7 +396,7 @@ def test_tts_preserves_text_and_rejects_qwen_over_limit(
             "edit",
             "x",
             "--model",
-            "gemini-omni-1.1-flash",
+            "gemini-omni-1.2-flash",
             "--video",
             "https://cdn.test/v.mp4",
         ],
@@ -2596,6 +2596,14 @@ def test_heygen_catalogs(command, path, params, monkeypatch):
             "lipsync",
             "image",
             "--model",
+            "heygen-avatar-6",
+            "--image",
+            "https://img.test/a.png",
+        ],
+        [
+            "lipsync",
+            "image",
+            "--model",
             "heygen-avatar-4",
             "--image",
             "https://img.test/a.png",
@@ -2714,6 +2722,120 @@ def test_heygen_invalid_options_fail_before_http(command):
 @respx.mock
 def test_image_provider_options_fail_before_http(command):
     result = runner.invoke(app, ["-j", *command])
+    assert result.exit_code == 2, result.output
+    assert json.loads(result.stdout)["error"]["code"] == "validation_error"
+    assert result.stderr == ""
+    assert not respx.calls
+
+
+@respx.mock
+def test_omni12_generation_with_expanded_limits(monkeypatch):
+    route = mock_async_post("/v1/video_generate")
+    references = ["https://img.test/reference.png"] * 6
+    invoke_json(
+        [
+            "video",
+            "generate",
+            "a flowing scene",
+            "--model",
+            "gemini-omni-1.2-flash",
+            "--duration",
+            "15",
+            *[
+                part
+                for reference in references
+                for part in ("--reference-image", reference)
+            ],
+        ],
+        monkeypatch,
+    )
+    body = request_json(route)
+    assert body["model"] == "gemini-omni-1.2-flash"
+    assert body["duration"] == 15
+    assert body["reference_image_urls"] == references
+
+
+@pytest.mark.parametrize("model", ["heygen-avatar-6", "heygen-avatar-6-turbo"])
+@pytest.mark.parametrize("resolution,motion", [(None, None), ("2k", "less")])
+@respx.mock
+def test_heygen_avatar6_payload(model, resolution, motion, monkeypatch):
+    route = mock_async_post("/v1/image_lipsync")
+    options = []
+    if resolution is not None:
+        options += ["--resolution", resolution]
+    if motion is not None:
+        options += ["--expressiveness", motion]
+    invoke_json(
+        [
+            "lipsync",
+            "image",
+            "--model",
+            model,
+            "--image",
+            str(FIXTURES / "sample.png"),
+            "--audio",
+            str(FIXTURES / "result-2.mp3"),
+            "--prompt",
+            "A subtle smile",
+            "--callback-url",
+            "https://hooks.test/callback",
+            *options,
+        ],
+        monkeypatch,
+    )
+    body = request_json(route)
+    assert body == {
+        "model": model,
+        "image_url": body["image_url"],
+        "audio_url": body["audio_url"],
+        "resolution": resolution or "1080p",
+        "motion_expressiveness": motion or "default",
+        "prompt": "A subtle smile",
+        "callback_url": "https://hooks.test/callback",
+    }
+    assert body["image_url"].startswith("data:image/png;base64,")
+    assert body["audio_url"].startswith("data:audio/")
+    respx.get("https://api.test/v1/openapi.json").respond(200, json=bundled_schema())
+    items = [
+        part
+        for key, value in body.items()
+        for part in ("--input", f"{key}={json.dumps(value)}")
+    ]
+    for endpoint in ("image_lipsync", "/v1/image_lipsync"):
+        invoke_json(["run", endpoint, *items], monkeypatch)
+        assert json.loads(route.calls[-1].request.content) == body
+
+
+@pytest.mark.parametrize(
+    "model,options",
+    [
+        ("heygen-avatar-6", ["--text", "Hello", "--voice-id", "voice"]),
+        ("heygen-avatar-6", ["--resolution", "720p"]),
+        ("heygen-avatar-6", ["--expressiveness", "low"]),
+        ("heygen-avatar-6", ["--aspect-ratio", "auto"]),
+        ("heygen-avatar-6", ["--prompt", "x" * 1201]),
+        ("heygen-avatar-6", ["--expressiveness", "high"]),
+        ("heygen-avatar-4", ["--expressiveness", "less"]),
+        ("inftalk", ["--expressiveness", "less"]),
+    ],
+)
+@respx.mock
+def test_heygen_avatar6_rejects_incompatible_options(model, options):
+    result = runner.invoke(
+        app,
+        [
+            "-j",
+            "lipsync",
+            "image",
+            "--model",
+            model,
+            "--image",
+            "https://img.test/a.png",
+            "--audio",
+            "https://cdn.test/a.mp3",
+            *options,
+        ],
+    )
     assert result.exit_code == 2, result.output
     assert json.loads(result.stdout)["error"]["code"] == "validation_error"
     assert result.stderr == ""

@@ -309,24 +309,33 @@ def test_wan27_video_contracts_validate_reference_modes():
 
 
 def test_omni_video_generation_contract():
-    payload = validate_video_generate(prompt="x", model="gemini-omni-1.1-flash")
+    payload = validate_video_generate(prompt="x", model="gemini-omni-1.2-flash")
 
     assert payload.duration == 8
     assert payload.resolution == "720p"
     assert payload.aspect_ratio == "16:9"
-    with pytest.raises(ValidationError, match="less than or equal to 10"):
+    with pytest.raises(ValidationError, match="less than or equal to 15"):
         validate_video_generate(
             prompt="x",
-            model="gemini-omni-1.1-flash",
-            duration=11,
+            model="gemini-omni-1.2-flash",
+            duration=16,
             resolution="1080p",
         )
     with pytest.raises(ValidationError, match="cannot be combined"):
         validate_video_generate(
             prompt="x",
-            model="gemini-omni-1.1-flash",
+            model="gemini-omni-1.2-flash",
             image_url="https://img.test/start.png",
             reference_image_urls=["https://img.test/reference.png"],
+        )
+
+    with pytest.raises(ValidationError, match="at most 10 seconds"):
+        validate_video_generate(
+            prompt="x",
+            model="gemini-omni-1.2-flash",
+            duration=11,
+            image_url="https://img.test/start.png",
+            image_last_url="https://img.test/end.png",
         )
 
 

@@ -511,7 +511,7 @@ def test_mcp_video_edit_forwards_owned_task_id() -> None:
                 "video_edit",
                 {
                     "prompt": "change the lighting",
-                    "model": "gemini-omni-1.1-flash",
+                    "model": "gemini-omni-1.2-flash",
                     "task_id": task_id,
                     "execution": {"wait": False},
                 },
@@ -521,7 +521,7 @@ def test_mcp_video_edit_forwards_owned_task_id() -> None:
     assert result.is_error is False
     assert json.loads(route.calls[0].request.content) == {
         "prompt": "change the lighting",
-        "model": "gemini-omni-1.1-flash",
+        "model": "gemini-omni-1.2-flash",
         "video_from_task_id": task_id,
         "resolution": "720p",
     }
@@ -530,6 +530,30 @@ def test_mcp_video_edit_forwards_owned_task_id() -> None:
 @pytest.mark.parametrize(
     "tool,arguments,path,method",
     [
+        (
+            "lipsync_image",
+            {
+                "model": "heygen-avatar-6-turbo",
+                "image": "https://img.test/a.png",
+                "audio": "https://cdn.test/a.mp3",
+                "resolution": "2k",
+                "expressiveness": "less",
+            },
+            "image_lipsync",
+            "POST",
+        ),
+        (
+            "lipsync_image",
+            {
+                "model": "heygen-avatar-6",
+                "image": "https://img.test/a.png",
+                "audio": "https://cdn.test/a.mp3",
+                "resolution": "2k",
+                "expressiveness": "less",
+            },
+            "image_lipsync",
+            "POST",
+        ),
         (
             "lipsync_image",
             {
@@ -573,7 +597,11 @@ def test_mcp_heygen_tools_call_public_endpoints(tool, arguments, path, method):
     assert route.call_count == 1
     if tool == "lipsync_image":
         body = json.loads(route.calls[0].request.content)
-        assert body["resolution"] == "1080p" and "seed" not in body
+        assert body["resolution"] == arguments.get("resolution", "1080p")
+        assert "seed" not in body
+        if arguments["model"] in {"heygen-avatar-6", "heygen-avatar-6-turbo"}:
+            assert body["motion_expressiveness"] == "less"
+            assert "expressiveness" not in body
     elif tool == "video_translate":
         assert (
             json.loads(route.calls[0].request.content)["output_language"] == "Spanish"

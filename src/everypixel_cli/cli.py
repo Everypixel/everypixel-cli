@@ -1321,7 +1321,12 @@ def lipsync_image(
     text: Optional[str] = None,
     voice_id: Optional[str] = None,
     aspect_ratio: Optional[str] = None,
-    expressiveness: Optional[str] = None,
+    expressiveness: Annotated[
+        Optional[str],
+        typer.Option(
+            help="Avatar 4: low, medium, high; Avatar 6/Turbo: default, less."
+        ),
+    ] = None,
     prompt: Optional[str] = None,
     seed: Optional[int] = None,
     callback_url: Annotated[Optional[str], typer.Option("--callback-url")] = None,

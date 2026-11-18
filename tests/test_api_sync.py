@@ -42,6 +42,7 @@ def test_bundled_openapi_has_current_video_edit_contract():
         "wan2.7",
         "aleph2",
         "gemini-omni-1.1-flash",
+        "gemini-omni-1.2-flash",
         "flux3",
     }
     generate_schema = schema["paths"]["/v1/video_generate"]["post"]["requestBody"][
@@ -64,20 +65,22 @@ def test_bundled_openapi_has_current_video_edit_contract():
         "wan2.7",
         "wan3.0",
         "gemini-omni-1.1-flash",
+        "gemini-omni-1.2-flash",
     }
     assert schema["components"]["schemas"]["Seedance2VideoGenRequest"]["properties"][
         "model"
     ]["enum"] == ["seedance2", "seedance2-mini", "seedance2.5"]
-    assert (
-        schema["components"]["schemas"]["OmniVideoGenRequest"]["properties"]["model"][
-            "const"
-        ]
-        == "gemini-omni-1.1-flash"
-    )
+    for component in ("OmniVideoGenRequest", "OmniVideoEditRequest"):
+        model = schema["components"]["schemas"][component]["properties"]["model"]
+        assert model["enum"] == ["gemini-omni-1.1-flash", "gemini-omni-1.2-flash"]
+        assert model["default"] == "gemini-omni-1.2-flash"
+    omni = schema["components"]["schemas"]["OmniVideoGenRequest"]["properties"]
+    assert omni["duration"]["maximum"] == 15
+    assert omni["reference_image_urls"]["maxItems"] == 6
     components = schema["components"]["schemas"]
     assert components["Grok15VideoResolutionEnum"]["enum"] == ["480p", "720p", "1080p"]
     assert (
-        edit_schema["discriminator"]["mapping"]["gemini-omni-1.1-flash"]
+        edit_schema["discriminator"]["mapping"]["gemini-omni-1.2-flash"]
         == "#/components/schemas/OmniVideoEditRequest"
     )
     for component in edit_schema["discriminator"]["mapping"].values():
@@ -92,7 +95,7 @@ def test_bundled_openapi_has_current_video_edit_contract():
         "minimax-h3-turbo": "MiniMaxH3VideoGenRequest",
         "wan3.0": "Wan30VideoGenRequest",
         "flux3": "Flux3VideoGenRequest",
-        "gemini-omni-1.1-flash": "OmniVideoGenRequest",
+        "gemini-omni-1.2-flash": "OmniVideoGenRequest",
         "seedance2.5": "Seedance2VideoGenRequest",
     }.items():
         assert generate_schema["discriminator"]["mapping"][model] == (
@@ -389,6 +392,27 @@ def test_bundled_heygen_contract():
     ]["/v1/image_lipsync"]["post"]["requestBody"]["content"]["application/json"][
         "schema"
     ]["anyOf"]
+
+    from everypixel_cli.schemas import HeyGenAvatar6Payload
+
+    def normalized(value):
+        if isinstance(value, dict):
+            return {
+                key: normalized(item)
+                for key, item in value.items()
+                if key not in {"title", "description"}
+                and not (key == "default" and item is None)
+            }
+        if isinstance(value, list):
+            return [normalized(item) for item in value]
+        return value
+
+    assert normalized(HeyGenAvatar6Payload.model_json_schema()) == normalized(
+        components["HeyGenAvatar6Request"]
+    )
+    assert {"$ref": "#/components/schemas/HeyGenAvatar6Request"} in schema["paths"][
+        "/v1/image_lipsync"
+    ]["post"]["requestBody"]["content"]["application/json"]["schema"]["anyOf"]
 
 
 def test_image_provider_schemas_match_bundled_contract():

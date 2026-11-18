@@ -298,11 +298,11 @@ class LipsyncImageInput(MCPToolInput):
     image: str
     audio: str | None = None
     model: LipsyncImageModel = "inftalk"
-    resolution: Literal[LipsyncImageResolution, "1080p"] | None = None
+    resolution: Literal[LipsyncImageResolution, "1080p", "2k"] | None = None
     text: str | None = None
     voice_id: str | None = None
     aspect_ratio: str | None = None
-    expressiveness: Literal["low", "medium", "high"] | None = None
+    expressiveness: Literal["low", "medium", "high", "default", "less"] | None = None
     prompt: str | None = None
     seed: int | None = None
     callback_url: str | None = None
