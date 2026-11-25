@@ -48,6 +48,7 @@ from .schemas import (
     ImageGenerateModel,
     ImageQuality,
     ImageResolution,
+    Seedream55Resolution,
     ImageSize,
     ImageStyle,
     LipsyncImageModel,
@@ -174,13 +175,13 @@ class ChatInput(MCPToolInput, ChatRequest):
 
 class ImageGenerateInput(MCPToolInput):
     prompt: str
-    model: ImageGenerateModel = "zimage"
+    model: ImageGenerateModel = "krea2"
     image_size: ImageSize | None = None
     style: ImageStyle | None = None
     image: str | None = None
     lora_url: str | None = None
     controls: RecraftControls | None = None
-    resolution: ImageResolution | None = None
+    resolution: Literal[ImageResolution, Seedream55Resolution] | None = None
     quality: ImageQuality | None = None
     complexity: Literal["low", "medium", "high"] | None = None
     output_format: Literal["png", "jpeg", "webp", "gif", "svg"] | None = None
@@ -197,7 +198,7 @@ class ImageEditInput(MCPToolInput):
     images: ImageEditMedia
     model: ImageEditModel = "flux2"
     image_size: ImageSize | None = None
-    resolution: ImageResolution | None = None
+    resolution: Literal[ImageResolution, Seedream55Resolution] | None = None
     quality: ImageQuality | None = None
     complexity: Literal["low", "medium", "high"] | None = None
     output_format: Literal["png", "jpeg", "webp", "gif"] | None = None

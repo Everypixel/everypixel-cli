@@ -22,6 +22,7 @@ from referencing.jsonschema import DRAFT202012
 
 from .config import config_dir
 from .errors import CLIError, EXIT_VALIDATION, FileWriteError
+from .schemas import normalize_image_generate_model
 
 
 SCHEMA_TTL_SECONDS = 24 * 60 * 60
@@ -243,18 +244,15 @@ def validate_payload_against_operation(
     # Provider schemas have model defaults, so a bare oneOf can match several
     # branches when model is omitted. Follow the API's discriminator dispatch.
     discriminator = schema.get("discriminator", {})
+    mapping = discriminator.get("mapping", {})
     model = payload.get("model")
-    if model is None and operation.path == "/v1/image_generate":
-        style = payload.get("style")
-        model = (
-            {"portrait": "zimage", "transparent": "flux2"}.get(style, "zimage")
-            if isinstance(style, str)
-            else "zimage"
-        )
+    if operation.path == "/v1/image_generate" and "krea2" in mapping:
+        payload = normalize_image_generate_model(payload)
+        model = payload["model"]
     elif model is None and operation.path == "/v1/image_edit":
         model = "flux2"
     if discriminator.get("propertyName") == "model" and isinstance(model, str):
-        reference = discriminator.get("mapping", {}).get(model)
+        reference = mapping.get(model)
         if reference:
             schema = {"$ref": reference}
     validator = openapi_validator(schema, operation.document)

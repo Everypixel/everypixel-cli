@@ -677,7 +677,7 @@ def profile_use(ctx: typer.Context, name: str) -> None:
 def image_generate(
     ctx: typer.Context,
     prompt: str,
-    model: Annotated[str, typer.Option("--model")] = "zimage",
+    model: Annotated[str, typer.Option("--model")] = "krea2",
     size: Annotated[Optional[str], typer.Option("--size")] = None,
     style: Annotated[Optional[str], typer.Option("--style")] = None,
     image: Annotated[Optional[str], typer.Option("--image")] = None,
@@ -691,7 +691,10 @@ def image_generate(
         Optional[str],
         typer.Option(
             "--quality",
-            help="GPT Image quality: low, medium, high; 2.5/2.6 also xhigh, max.",
+            help=(
+                "Krea 2: low (default) or medium. GPT Image: low, medium, high "
+                "(2.5/2.6: also xhigh, max)."
+            ),
         ),
     ] = None,
     complexity: Annotated[

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0] - 2026-11-25
+
+- Replace Z-Image with Krea 2 as the default image generation model.
+- Add Seedream 5.5 image generation and editing.
+- Add 4:5 and 5:4 image size presets for supported models.
+- Show the billed cost when a Grok task is blocked by moderation and the API reports a charge.
+
 ## [0.6.1] - 2026-11-18
 
 - Add Gemini Omni 1.2 Flash video generation and editing.

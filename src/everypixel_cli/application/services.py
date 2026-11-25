@@ -61,6 +61,7 @@ from ..schemas import (
     VideoGenerateModel,
     VideoUpscalePayload,
     normalize_grok_model,
+    normalize_image_generate_model,
     normalize_image_quality,
 )
 from .chat import ChatClientProtocol, ChatService, build_chat_payload
@@ -148,6 +149,9 @@ def extract_task_failure(payload: dict[str, Any]) -> tuple[str, dict[str, Any]]:
 
     error = payload.get("error")
     details: dict[str, Any] = {}
+    billed_cost = payload.get("billed_cost")
+    if billed_cost is not None:
+        details["billed_cost"] = billed_cost
     message = extract_failure_message(error)
     if not message:
         for key in ("message", "detail", "reason"):
@@ -1726,17 +1730,27 @@ class ApplicationServices:
         if path in {"/v1/image_generate", "/v1/image_edit", "/v1/video_generate"}:
             payload = normalize_grok_model(payload)
         if path in {"/v1/image_generate", "/v1/image_edit"}:
+            is_generate = path == "/v1/image_generate"
             try:
-                payload = normalize_image_quality(payload)
+                provider_payload = (
+                    normalize_image_generate_model(payload) if is_generate else payload
+                )
+                validated_payload = normalize_image_quality(
+                    provider_payload, allow_krea2=is_generate
+                )
             except ValueError as exc:
                 raise ValidationCLIError(str(exc)) from exc
+            if provider_payload is payload:
+                payload = validated_payload
             image_adapter, models = (
                 (_IMAGE_GENERATE_ADAPTER, ImageGenerateModel)
-                if path == "/v1/image_generate"
+                if is_generate
                 else (_IMAGE_EDIT_ADAPTER, ImageEditModel)
             )
-            if "model" not in payload or payload.get("model") in get_args(models):
-                image_adapter.validate_python(payload, extra="ignore")
+            if "model" not in validated_payload or validated_payload[
+                "model"
+            ] in get_args(models):
+                image_adapter.validate_python(validated_payload, extra="ignore")
         if path == "/v1/image_lipsync":
             builder = _LIPSYNC_IMAGE_BUILDERS.get(
                 payload.get("model", "inftalk"), LipsyncImagePayload

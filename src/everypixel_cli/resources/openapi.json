@@ -2821,9 +2821,11 @@
           "square",
           "portrait_3_2",
           "portrait_4_3",
+          "portrait_5_4",
           "portrait_16_9",
           "landscape_3_2",
           "landscape_4_3",
+          "landscape_5_4",
           "landscape_16_9"
         ],
         "title": "ImageSizeEnum",
@@ -3531,6 +3533,97 @@
         ],
         "title": "KlingVideoResolutionEnum",
         "type": "string"
+      },
+      "Krea2ImageGenerateRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "$ref": "#/components/schemas/ImageSizeEnum",
+            "default": "square"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "lora_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lora Url"
+          },
+          "model": {
+            "const": "krea2",
+            "default": "krea2",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "quality": {
+            "default": "medium",
+            "enum": [
+              "low",
+              "medium"
+            ],
+            "title": "Quality",
+            "type": "string"
+          },
+          "resolution": {
+            "default": "1k",
+            "enum": [
+              "1k",
+              "2k"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "style": {
+            "const": "portrait",
+            "default": "portrait",
+            "title": "Style",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "Krea2ImageGenerateRequest",
+        "type": "object"
       },
       "LTX23VideoGenRequest": {
         "properties": {
@@ -4731,6 +4824,123 @@
           "4k"
         ],
         "title": "Seedance2VideoResolutionEnum",
+        "type": "string"
+      },
+      "Seedream55ImageEditRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImageSizeEnum"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Image Urls",
+            "type": "array"
+          },
+          "model": {
+            "const": "seedream-5.5",
+            "default": "seedream-5.5",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/Seedream55Resolution",
+            "default": "2k"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt",
+          "image_urls"
+        ],
+        "title": "Seedream55ImageEditRequest",
+        "type": "object"
+      },
+      "Seedream55ImageGenerateRequest": {
+        "properties": {
+          "callback_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "image_size": {
+            "$ref": "#/components/schemas/ImageSizeEnum",
+            "default": "square"
+          },
+          "model": {
+            "const": "seedream-5.5",
+            "default": "seedream-5.5",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/Seedream55Resolution",
+            "default": "2k"
+          },
+          "seed": {
+            "default": -1,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "Seedream55ImageGenerateRequest",
+        "type": "object"
+      },
+      "Seedream55Resolution": {
+        "enum": [
+          "1k",
+          "1.5k",
+          "2k"
+        ],
+        "title": "Seedream55Resolution",
         "type": "string"
       },
       "Seedream5ImageEditRequest": {
@@ -6285,83 +6495,6 @@
         ],
         "title": "Wan30VideoResolutionEnum",
         "type": "string"
-      },
-      "ZImageGenerateRequest": {
-        "properties": {
-          "callback_url": {
-            "anyOf": [
-              {
-                "format": "uri",
-                "maxLength": 2083,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Callback Url"
-          },
-          "image_size": {
-            "$ref": "#/components/schemas/ImageSizeEnum",
-            "default": "square"
-          },
-          "image_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Image Url"
-          },
-          "lora_url": {
-            "anyOf": [
-              {
-                "format": "uri",
-                "maxLength": 2083,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lora Url"
-          },
-          "model": {
-            "const": "zimage",
-            "default": "zimage",
-            "title": "Model",
-            "type": "string"
-          },
-          "prompt": {
-            "title": "Prompt",
-            "type": "string"
-          },
-          "resolution": {
-            "$ref": "#/components/schemas/ImageGenerateResolutionEnum",
-            "default": "1k"
-          },
-          "seed": {
-            "default": -1,
-            "title": "Seed",
-            "type": "integer"
-          },
-          "style": {
-            "const": "portrait",
-            "default": "portrait",
-            "title": "Style",
-            "type": "string"
-          }
-        },
-        "required": [
-          "prompt"
-        ],
-        "title": "ZImageGenerateRequest",
-        "type": "object"
       }
     }
   },
@@ -6873,6 +7006,7 @@
                     "seedream-5": "#/components/schemas/Seedream5ImageEditRequest",
                     "seedream-5-flash": "#/components/schemas/SeedreamImageEditRequest",
                     "seedream-5-pro": "#/components/schemas/SeedreamImageEditRequest",
+                    "seedream-5.5": "#/components/schemas/Seedream55ImageEditRequest",
                     "wan2.7": "#/components/schemas/Wan27ImageEditRequest",
                     "wan2.7-pro": "#/components/schemas/Wan27ImageEditRequest"
                   },
@@ -6902,6 +7036,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/Seedream5ImageEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Seedream55ImageEditRequest"
                   },
                   {
                     "$ref": "#/components/schemas/Wan27ImageEditRequest"
@@ -7119,20 +7256,21 @@
                     "grok-imagine": "#/components/schemas/GrokImageGenerateRequest",
                     "grok-imagine-2": "#/components/schemas/GrokImageGenerateRequest",
                     "grok-imagine-2-low": "#/components/schemas/GrokImageGenerateRequest",
+                    "krea2": "#/components/schemas/Krea2ImageGenerateRequest",
                     "recraftv4_1_pro_vector": "#/components/schemas/RecraftImageGenerateRequest",
                     "recraftv4_1_vector": "#/components/schemas/RecraftImageGenerateRequest",
                     "seedream-5": "#/components/schemas/Seedream5ImageGenerateRequest",
                     "seedream-5-flash": "#/components/schemas/SeedreamImageGenerateRequest",
                     "seedream-5-pro": "#/components/schemas/SeedreamImageGenerateRequest",
+                    "seedream-5.5": "#/components/schemas/Seedream55ImageGenerateRequest",
                     "wan2.7": "#/components/schemas/Wan27ImageGenerateRequest",
-                    "wan2.7-pro": "#/components/schemas/Wan27ProImageGenerateRequest",
-                    "zimage": "#/components/schemas/ZImageGenerateRequest"
+                    "wan2.7-pro": "#/components/schemas/Wan27ProImageGenerateRequest"
                   },
                   "propertyName": "model"
                 },
                 "oneOf": [
                   {
-                    "$ref": "#/components/schemas/ZImageGenerateRequest"
+                    "$ref": "#/components/schemas/Krea2ImageGenerateRequest"
                   },
                   {
                     "$ref": "#/components/schemas/Flux2ImageGenerateRequest"
@@ -7154,6 +7292,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/Seedream5ImageGenerateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Seedream55ImageGenerateRequest"
                   },
                   {
                     "$ref": "#/components/schemas/Wan27ImageGenerateRequest"

@@ -86,6 +86,45 @@ def test_grok_image_models_and_generic_aliases(model, canonical, monkeypatch):
     assert generic["future_option"] is False
 
 
+@pytest.mark.parametrize(
+    "options,fields,expected",
+    [
+        (["--model", "krea2", "--quality", "low"], {}, ("krea2", "low")),
+        (["--model", "krea2"], {"model": "krea2"}, ("krea2", "low")),
+        (
+            ["--model", "krea2", "--quality", "medium"],
+            {"quality": "medium"},
+            ("krea2", "medium"),
+        ),
+        (
+            ["--model", "flux2", "--style", "transparent"],
+            {"style": "transparent"},
+            ("flux2", None),
+        ),
+    ],
+)
+@respx.mock
+def test_image_generate_explicit_model_and_generic_defaults(
+    options, fields, expected, monkeypatch
+):
+    route = mock_async_post("/v1/image_generate")
+    respx.get("https://api.test/v1/openapi.json").respond(200, json=bundled_schema())
+    invoke_json(["image", "generate", "a lake", *options], monkeypatch)
+    body = request_json(route)
+    assert (body["model"], body.get("quality")) == expected
+
+    generic_payload = {"prompt": "a lake", **fields}
+    items = [
+        part
+        for key, value in generic_payload.items()
+        for part in ("--input", f"{key}={json.dumps(value)}")
+    ]
+    invoke_json(["run", "image_generate", *items], monkeypatch)
+    if fields.get("model") == "krea2":
+        generic_payload.setdefault("quality", expected[1])
+    assert json.loads(route.calls[-1].request.content) == generic_payload
+
+
 @pytest.mark.parametrize("operation", ["generate", "edit"])
 @pytest.mark.parametrize(
     ("model", "quality", "expected_quality"),
@@ -140,6 +179,8 @@ def test_gpt_image_quality_matches_generic_requests(
         {"model": "gpt-image-2", "quality": "max"},
         {"model": "gpt-image-2.5-sunburst", "quality": "invalid"},
         {"model": "flux2", "quality": "high"},
+        {"model": "grok-imagine", "image_size": "portrait_5_4"},
+        {"model": "seedream-5.5", "resolution": "4k"},
         {"model": "gpt-image-2.5-sunburst", "resolution": "4k"},
         {
             "model": "gpt-image-2.5-sunburst",
@@ -149,7 +190,7 @@ def test_gpt_image_quality_matches_generic_requests(
     ],
 )
 @respx.mock
-def test_gpt_image_invalid_quality_and_size_fail_before_http(operation, fields):
+def test_image_invalid_quality_and_size_fail_before_http(operation, fields):
     image = "https://img.test/source.png"
     payload = {"prompt": "a lake", **fields}
     options = [
@@ -413,8 +454,9 @@ def test_tts_preserves_text_and_rejects_qwen_over_limit(
         ],
         ["image", "generate", "x", "--model", "wan22"],
         ["image", "generate", "x", "--model", "grok_quality"],
-        ["image", "generate", "x", "--style", "instagram"],
-        ["image", "generate", "x", "--controls", "{}"],
+        ["image", "generate", "x", "--model", "zimage"],
+        ["image", "generate", "x", "--model", "krea2", "--style", "instagram"],
+        ["image", "generate", "x", "--model", "krea2", "--controls", "{}"],
         ["image", "generate", "x", "--model", "gpt-image-2-high"],
         [
             "image",
@@ -1058,6 +1100,7 @@ def test_image_generate_payload(monkeypatch):
     [
         ("seedream-5", "2k"),
         ("seedream-5-flash", "2k"),
+        ("seedream-5.5", "2k"),
         ("flux3", "1k"),
         ("gemini-nano-banana-2.1", "1k"),
         ("gemini-3.1-flash-lite", "1k"),
@@ -1096,12 +1139,13 @@ def test_wan_image_generate_uses_provider_default_resolution(monkeypatch):
     [
         ("flux2", 5, None, None),
         ("qwen", 3, None, None),
-        ("gpt-image-2.5-sunburst", 16, "3k", "square"),
+        ("gpt-image-2.5-sunburst", 16, "3k", "landscape_5_4"),
         ("gemini-3-pro", 14, "4k", None),
         ("flux3", 10, "4k", None),
         ("gemini-nano-banana-2.1", 14, "4k", None),
         ("gemini-3.1-flash-lite", 14, "1k", None),
         ("seedream-5-flash", 10, "2k", None),
+        ("seedream-5.5", 10, "1.5k", "portrait_5_4"),
     ],
 )
 @respx.mock
@@ -1123,6 +1167,7 @@ def test_image_edit_accepts_expanded_input_limits(
             "--model",
             model,
             *(["--resolution", resolution] if resolution is not None else []),
+            *(["--size", size] if size is not None else []),
         ],
         monkeypatch,
     )
@@ -1162,8 +1207,9 @@ def test_common_output_flag_before_command(monkeypatch):
     assert json.loads(result.stdout) == {"task_id": "abc", "status": "PENDING"}
     assert request_json(route) == {
         "prompt": "woman smiling",
-        "model": "zimage",
+        "model": "krea2",
         "style": "portrait",
+        "quality": "low",
         "image_size": "square",
         "resolution": "1k",
         "seed": -1,
@@ -2304,7 +2350,7 @@ def test_account_balance(monkeypatch):
 @pytest.mark.parametrize(
     "args,path",
     [
-        (["image", "generate", "a lake"], "image_generate"),
+        (["image", "generate", "a lake", "--model", "krea2"], "image_generate"),
         (["video", "generate", "a lake"], "video_generate"),
         (["audio", "tts-create", "--text", "Hello"], "tts_create"),
         (["run", "image_generate", "--input", "prompt=a lake"], "image_generate"),
@@ -2717,6 +2763,8 @@ def test_heygen_invalid_options_fail_before_http(command):
             "--lora-url",
             "https://cdn.test/a.safetensors",
         ],
+        ["image", "generate", "x", "--model", "krea2", "--quality", "high"],
+        ["image", "generate", "x", "--model", "krea2", "--resolution", "3k"],
     ],
 )
 @respx.mock

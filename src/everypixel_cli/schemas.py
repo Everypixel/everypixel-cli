@@ -27,21 +27,26 @@ ImageSize = Literal[
     "square",
     "portrait_3_2",
     "portrait_4_3",
+    "portrait_5_4",
     "portrait_16_9",
     "landscape_3_2",
     "landscape_4_3",
+    "landscape_5_4",
     "landscape_16_9",
 ]
 ImageStyle = Literal["portrait", "transparent"]
 ImageResolution = Literal["1k", "2k", "3k", "4k"]
+Seedream55Resolution = Literal["1k", "1.5k", "2k"]
+IMAGE_5_4_SIZES = frozenset({"portrait_5_4", "landscape_5_4"})
 ImageQuality = Literal["low", "medium", "high", "xhigh", "max"]
+DEFAULT_KREA2_QUALITY: Literal["low"] = "low"
 GPTImageModel = Literal[
     "gpt-image-2", "gpt-image-2.5-sunburst", "gpt-image-2.6-sunburst"
 ]
 RasterImageGenerateModel = Literal[
     GPTImageModel,
     "flux3",
-    "zimage",
+    "krea2",
     "wan2.7",
     "wan2.7-pro",
     "flux2",
@@ -56,6 +61,7 @@ RasterImageGenerateModel = Literal[
     "seedream-5-pro",
     "seedream-5-flash",
     "seedream-5",
+    "seedream-5.5",
 ]
 ImageEditModel = Literal[
     GPTImageModel,
@@ -75,6 +81,7 @@ ImageEditModel = Literal[
     "seedream-5-pro",
     "seedream-5-flash",
     "seedream-5",
+    "seedream-5.5",
 ]
 
 RecraftVectorModel = Literal["recraftv4_1_vector", "recraftv4_1_pro_vector"]
@@ -112,7 +119,7 @@ def normalize_grok_model(value: Any) -> Any:
     return value
 
 
-def normalize_image_quality(value: Any) -> Any:
+def normalize_image_quality(value: Any, *, allow_krea2: bool = False) -> Any:
     """Apply quality defaults and validate the selected model's quality contract."""
 
     if not isinstance(value, dict):
@@ -135,8 +142,12 @@ def normalize_image_quality(value: Any) -> Any:
             raise ValueError(f"quality {quality} is not supported by model {model}")
         value["quality"] = quality
         return value
+    if allow_krea2 and model == "krea2":
+        value.setdefault("quality", DEFAULT_KREA2_QUALITY)
+        return value
     if "quality" in value:
-        raise ValueError("quality is supported only by GPT Image models")
+        models = "GPT Image and Krea 2" if allow_krea2 else "GPT Image"
+        raise ValueError(f"quality is supported only by {models} models")
     return value
 
 
@@ -232,8 +243,10 @@ class _LocalImageGenerateRequest(_ImageGenerateRequest):
         return value
 
 
-class ZImageGeneratePayload(_LocalImageGenerateRequest):
-    model: Literal["zimage"] = "zimage"
+class Krea2ImageGeneratePayload(_LocalImageGenerateRequest):
+    model: Literal["krea2"]
+    resolution: Literal["1k", "2k"] = "1k"
+    quality: Literal["low", "medium"] = DEFAULT_KREA2_QUALITY
     style: Literal["portrait"] = "portrait"
 
     @field_validator("style", mode="before")
@@ -270,11 +283,19 @@ class Flux3ImageEditPayload(_ImageEditRequest):
     image_urls: list[str] = Field(min_length=1, max_length=10)
 
 
+def _validate_grok_image_size(value: ImageSize | None) -> ImageSize | None:
+    if value in IMAGE_5_4_SIZES:
+        raise ValueError("Grok does not support 4:5 or 5:4 image sizes")
+    return value
+
+
 class GrokImageGeneratePayload(_ImageGenerateRequest):
     model: Literal["grok-imagine", "grok-imagine-2", "grok-imagine-2-low"] = (
         "grok-imagine"
     )
     resolution: Literal["1k", "2k"] = "1k"
+
+    validate_output_size = field_validator("image_size")(_validate_grok_image_size)
 
 
 class GrokImageEditPayload(_ImageEditRequest):
@@ -283,6 +304,8 @@ class GrokImageEditPayload(_ImageEditRequest):
     )
     resolution: Literal["1k", "2k"] = "1k"
     image_urls: list[str] = Field(min_length=1, max_length=3)
+
+    validate_output_size = field_validator("image_size")(_validate_grok_image_size)
 
 
 class GeminiImageGeneratePayload(_ImageGenerateRequest):
@@ -333,6 +356,17 @@ class Seedream5ImageEditPayload(_ImageEditRequest):
     image_urls: list[str] = Field(min_length=1, max_length=14)
 
 
+class Seedream55ImageGeneratePayload(_TextOnlyImageGenerateRequest):
+    model: Literal["seedream-5.5"] = "seedream-5.5"
+    resolution: Seedream55Resolution = "2k"
+
+
+class Seedream55ImageEditPayload(_ImageEditRequest):
+    model: Literal["seedream-5.5"] = "seedream-5.5"
+    resolution: Seedream55Resolution = "2k"
+    image_urls: list[str] = Field(min_length=1, max_length=10)
+
+
 class _WanImageSettings(BaseModel):
     prompt: str = Field(min_length=1, max_length=5000)
     seed: int = Field(default=-1, ge=-1, le=2_147_483_647)
@@ -359,9 +393,15 @@ class _GPTImageGenerateRequest(_TextOnlyImageGenerateRequest):
     quality: ImageQuality = "medium"
 
     @model_validator(mode="after")
-    def validate_square_3k(self) -> "_GPTImageGenerateRequest":
-        if self.resolution == "3k" and self.image_size != "square":
-            raise ValueError("GPT Image 3k supports only square image_size")
+    def validate_3k_image_size(self) -> "_GPTImageGenerateRequest":
+        if (
+            self.resolution == "3k"
+            and self.image_size != "square"
+            and self.image_size not in IMAGE_5_4_SIZES
+        ):
+            raise ValueError(
+                "GPT Image 3k supports square, portrait_5_4, and landscape_5_4"
+            )
         return self
 
 
@@ -437,17 +477,17 @@ class GPTImage26EditPayload(GPTImage26GeneratePayload, _GPTImageEditRequest):
         return "square" if value is None else value
 
 
-def normalize_image_generate(values: Any) -> Any:
-    values = normalize_image_quality(normalize_grok_model(values))
-    if isinstance(values, dict) and "model" not in values:
-        values = dict(values)
-        style = values.get("style")
-        values["model"] = (
-            {"portrait": "zimage", "transparent": "flux2"}.get(style, "zimage")
-            if isinstance(style, str)
-            else "zimage"
-        )
+def normalize_image_generate_model(values: dict[str, Any]) -> dict[str, Any]:
+    """Resolve the server's implicit model for generic requests."""
+    if "model" not in values:
+        if values.get("style") == "transparent":
+            return {**values, "model": "flux2"}
+        return {"quality": "low", **values, "model": "krea2"}
     return values
+
+
+def normalize_image_generate(values: Any) -> Any:
+    return normalize_image_quality(normalize_grok_model(values), allow_krea2=True)
 
 
 def normalize_image_edit(values: Any) -> Any:
@@ -458,7 +498,7 @@ def normalize_image_edit(values: Any) -> Any:
 
 
 ImageGeneratePayload = Annotated[
-    ZImageGeneratePayload
+    Krea2ImageGeneratePayload
     | Flux2ImageGeneratePayload
     | Flux3ImageGeneratePayload
     | GrokImageGeneratePayload
@@ -466,6 +506,7 @@ ImageGeneratePayload = Annotated[
     | GeminiFlashLiteImageGeneratePayload
     | SeedreamImageGeneratePayload
     | Seedream5ImageGeneratePayload
+    | Seedream55ImageGeneratePayload
     | Wan27ImageGeneratePayload
     | Wan27ProImageGeneratePayload
     | RecraftGeneratePayload
@@ -484,6 +525,7 @@ ImageEditPayload = Annotated[
     | GeminiFlashLiteImageEditPayload
     | SeedreamImageEditPayload
     | Seedream5ImageEditPayload
+    | Seedream55ImageEditPayload
     | Wan27ImageEditPayload
     | GPTImage2EditPayload
     | GPTImage25EditPayload

@@ -106,16 +106,28 @@ def test_mcp_server_exposes_application_use_cases_with_generated_schemas() -> No
     )
     image_generate_schema = tools["image_generate"].input_schema
     assert image_generate_schema["required"] == ["prompt"]
-    assert "zimage" in image_generate_schema["properties"]["model"]["enum"]
+    image_generate_models = image_generate_schema["properties"]["model"]
+    assert image_generate_models["default"] == "krea2"
+    assert {"krea2", "seedream-5.5"} <= set(image_generate_models["enum"])
+    assert "zimage" not in image_generate_models["enum"]
     assert image_generate_schema["properties"]["image_size"]["anyOf"][0]["enum"] == [
         "square",
         "portrait_3_2",
         "portrait_4_3",
+        "portrait_5_4",
         "portrait_16_9",
         "landscape_3_2",
         "landscape_4_3",
+        "landscape_5_4",
         "landscape_16_9",
     ]
+    for name in ("image_generate", "image_edit"):
+        resolution = tools[name].input_schema["properties"]["resolution"]["anyOf"][0]
+        assert "1.5k" in resolution["enum"]
+    assert (
+        "seedream-5.5"
+        in tools["image_edit"].input_schema["properties"]["model"]["enum"]
+    )
     assert tools["image_edit"].input_schema["properties"]["images"]["minItems"] == 1
     video_duration_schema = tools["video_generate"].input_schema["properties"][
         "duration"
@@ -299,7 +311,7 @@ def test_mcp_tool_returns_sanitized_structured_error() -> None:
 @pytest.mark.parametrize(
     "invalid_arguments",
     [
-        {"prompt": "product photo", "resoluton": "1080p"},
+        {"prompt": "product photo", "model": "krea2", "resoluton": "1080p"},
         {"prompt": "product photo", "model": "unknown-model"},
     ],
 )
@@ -332,7 +344,7 @@ def test_mcp_redacts_values_from_pre_handler_validation_errors() -> None:
         async with Client(server) as client:
             return await client.call_tool(
                 "image_generate",
-                {"prompt": {"client_secret": sensitive_value}},
+                {"prompt": {"client_secret": sensitive_value}, "model": "krea2"},
             )
 
     result = asyncio.run(call_tool())

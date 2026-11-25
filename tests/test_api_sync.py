@@ -6,6 +6,7 @@ from everypixel_cli.schemas import (
     ChatRequest,
     ImageEditModel,
     ImageGenerateModel,
+    ImageSize,
     VideoGenerateModel,
     TTSCreateModel,
     TTSDesignModel,
@@ -142,11 +143,25 @@ def test_bundled_openapi_has_current_image_enums_and_quality_ugc():
         ("generate", ImageGenerateModel),
         ("edit", ImageEditModel),
     ):
-        body = schema["paths"][f"/v1/image_{operation}"]["post"]["requestBody"][
-            "content"
-        ]["application/json"]["schema"]
+        endpoint = schema["paths"][f"/v1/image_{operation}"]["post"]
+        assert (
+            endpoint["operationId"]
+            == {
+                "generate": "generate_v1_image_generate_post",
+                "edit": "image_edit_v1_image_edit_post",
+            }[operation]
+        )
+        body = endpoint["requestBody"]["content"]["application/json"]["schema"]
         mapping = body["discriminator"]["mapping"]
         assert set(mapping) == set(get_args(model_type)) - {"grok"}
+        seedream = f"Seedream55Image{operation.title()}Request"
+        assert mapping["seedream-5.5"] == f"#/components/schemas/{seedream}"
+        assert components[seedream]["properties"]["resolution"] == {
+            "$ref": "#/components/schemas/Seedream55Resolution",
+            "default": "2k",
+        }
+        if operation == "generate":
+            assert mapping["krea2"] == "#/components/schemas/Krea2ImageGenerateRequest"
         for version in ("2", "2.5", "2.6"):
             model = "gpt-image-2" if version == "2" else f"gpt-image-{version}-sunburst"
             name = f"GPTImage{version.replace('.', '')}{operation.title()}Request"
@@ -162,9 +177,16 @@ def test_bundled_openapi_has_current_image_enums_and_quality_ugc():
             if operation == "generate"
             else ["png", "jpeg", "webp", "gif"]
         )
+    assert components["ImageSizeEnum"]["enum"] == list(get_args(ImageSize))
+    krea = components["Krea2ImageGenerateRequest"]["properties"]
+    assert krea["style"]["const"] == "portrait"
+    assert krea["quality"]["enum"] == ["low", "medium"]
+    assert krea["quality"]["default"] == "medium"
+    assert krea["resolution"]["enum"] == ["1k", "2k"]
+    assert components["Seedream55Resolution"]["enum"] == ["1k", "1.5k", "2k"]
     assert (
-        components["ZImageGenerateRequest"]["properties"]["style"]["const"]
-        == "portrait"
+        components["Seedream55ImageEditRequest"]["properties"]["image_urls"]["maxItems"]
+        == 10
     )
     assert (
         components["Flux2ImageGenerateRequest"]["properties"]["style"]["anyOf"][0][
@@ -459,4 +481,9 @@ def test_image_provider_schemas_match_bundled_contract():
                 {"$ref": remote["discriminator"]["mapping"][model]},
                 document["components"]["schemas"],
             )
+            if model == "krea2":
+                # The client sends an explicit model and defaults to the fast tier.
+                expected["required"].append("model")
+                expected["properties"]["model"].pop("default")
+                expected["properties"]["quality"]["default"] = "low"
             assert actual == expected, model

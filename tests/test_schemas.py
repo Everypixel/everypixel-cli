@@ -78,7 +78,7 @@ def test_chat_rejects_invalid_roles_and_options(fields):
 
 @pytest.mark.parametrize(
     ("model", "style"),
-    [("zimage", "portrait"), ("flux2", "transparent")],
+    [("krea2", "portrait"), ("flux2", "transparent")],
 )
 def test_image_generate_keeps_styles_for_supported_models(model, style):
     assert validate_image_generate(prompt="x", model=model, style=style).style == style

@@ -115,7 +115,7 @@ reserve funds. Task polling and downloads are skipped for estimate responses.
 
 ```bash
 everypixel balance --output-json
-everypixel image generate "a lake" --estimate-cost
+everypixel image generate "a lake" --model krea2 --estimate-cost
 everypixel run image_generate --input prompt="a lake" --estimate-cost --output-json
 ```
 
@@ -164,15 +164,22 @@ Recraft V4.1 vector models (`recraftv4_1_vector`, `recraftv4_1_pro_vector`)
 produce SVG files and accept optional JSON palette `--controls`. Use `--size`
 to select their aspect ratio. Raster models also accept `--resolution`.
 
-`--lora-url` applies only to `zimage`. Source-image generation with `--image`
-uses `zimage` or `flux2 --style transparent`; use `image edit` for other modes.
+Image generation defaults to Krea 2 (`krea2`). Krea 2 accepts `--quality low`
+(the default) or `--quality medium`. Only Krea 2 uses `--lora-url`. To generate
+a transparent image from a source image, use
+`--model flux2 --style transparent --image FILE`. Use `image edit` for other
+source-image workflows.
 `--megapixel-ratio` applies only to `flux2` and `qwen` editing; these editing
 models do not accept `--resolution`.
+
+Use `--size portrait_5_4` for 4:5 or `--size landscape_5_4` for 5:4. For Grok,
+choose one of the other size presets.
 
 GPT Image models are `gpt-image-2`, `gpt-image-2.5-sunburst`, and
 `gpt-image-2.6-sunburst`. Generation and editing accept
 `--quality low|medium|high` (default: `medium`); both Sunburst models also accept
-`xhigh` and `max`. Use `--size square` with `--resolution 3k`.
+`xhigh` and `max`. At `--resolution 3k`, choose `square`, `portrait_5_4`,
+or `landscape_5_4`.
 
 GPT Image 2.6 accepts `--complexity low|medium|high` and
 `--output-format png|jpeg|webp|gif`; generation also accepts `svg`.
@@ -191,9 +198,10 @@ everypixel image generate "a looping animation of a waving cat" \
 ```
 
 Other image models include `flux3`, `gemini-nano-banana-2.1` (Nano Banana 2.1),
-`gemini-3.1-flash-lite` (Nano Banana 2 Lite), and `seedream-5-flash`.
-Nano Banana 2 Lite uses `--resolution 1k`. Repeat `--image` to provide multiple
-inputs to an editing model.
+`gemini-3.1-flash-lite` (Nano Banana 2 Lite), `seedream-5-flash`, and
+`seedream-5.5`. Nano Banana 2 Lite uses `--resolution 1k`. Seedream 5.5 accepts
+`1k`, `1.5k`, and `2k` (default) for generation and editing. Repeat
+`--image` to provide multiple inputs to an editing model.
 
 ### Video
 
@@ -442,8 +450,11 @@ everypixel wait TASK_ID --download ./outputs
 `elapsed_sec` is total local waiting time; `queue_sec` estimates time until the
 first observed `STARTED` response.
 
-API costs are USD strings: `estimated_cost` for pending tasks and `billed_cost`
-for successful results and chat. Missing costs are omitted; `"0"` means no charge.
+The API reports costs as USD strings. Pending tasks can include
+`estimated_cost`, and successful tasks and chat responses can include
+`billed_cost`. When Grok moderation blocks a task and the API reports a charge,
+JSON output includes it in `error.details.billed_cost`. The value `"0"` means
+no charge.
 
 ## Generic OpenAPI Runner
 

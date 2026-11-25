@@ -152,23 +152,31 @@ def test_generic_run_wait_stops_on_failure(monkeypatch):
     assert assert_task_failure_json(result)["error"]["message"] == "Generation failed"
 
 
+@pytest.mark.parametrize("billed_cost", ["0.02", "2e-2", 0.02])
 @respx.mock
-def test_async_command_wait_stops_on_failure(monkeypatch):
+def test_async_command_wait_reports_charged_moderation_failure(
+    monkeypatch, billed_cost
+):
     respx.post("https://api.test/v1/image_generate").mock(
         return_value=httpx.Response(
             200, json={"task_id": "abc123", "status": "PENDING"}
         )
     )
     respx.get("https://api.test/v1/status").mock(
-        return_value=httpx.Response(200, json=failed_payload("Generation failed"))
+        return_value=httpx.Response(
+            200,
+            json={**failed_payload("Content is moderated"), "billed_cost": billed_cost},
+        )
     )
 
     result = invoke_json(
-        ["image", "generate", "test prompt", "--model", "flux2", "--wait"],
+        ["image", "generate", "test prompt", "--model", "grok-imagine", "--wait"],
         monkeypatch,
     )
 
-    assert assert_task_failure_json(result)["error"]["message"] == "Generation failed"
+    error = assert_task_failure_json(result)["error"]
+    assert error["message"] == "Content is moderated"
+    assert error["details"]["billed_cost"] == billed_cost
 
 
 def test_non_terminal_status_remains_a_regular_status():
